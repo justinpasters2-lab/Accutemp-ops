@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Accutemp Ops Board</title>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f5f3;color:#1a1a1a;min-height:100vh}
+#auth-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;flex-direction:column;gap:16px}
+#auth-screen h1{font-size:22px;font-weight:500}
+#auth-screen p{font-size:14px;color:#666}
+#app{display:none;padding:20px 24px;max-width:1100px;margin:0 auto}
+.header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid #e0e0e0}
+.header h1{font-size:18px;font-weight:500}
+.header-right{display:flex;align-items:center;gap:12px}
+.user-info{font-size:13px;color:#666}
+.btn-signout{font-size:12px;padding:4px 12px;border:1px solid #ddd;border-radius:6px;background:white;cursor:pointer;color:#444}
+.btn-signout:hover{background:#f5f5f5}
+.sync-status{font-size:12px;color:#888;min-width:120px;text-align:right}
+.sync-status.saving{color:#1a73e8}
+.sync-status.saved{color:#34a853}
+.sync-status.error{color:#ea4335}
+.stats{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:20px}
+.stat{background:white;border-radius:8px;padding:12px 14px;border:1px solid #e8e8e8}
+.stat-num{font-size:24px;font-weight:500}
+.stat-label{font-size:11px;color:#888;margin-top:2px}
+.tabs{display:flex;gap:0;margin-bottom:0;border-bottom:1px solid #e0e0e0}
+.tab{font-size:13px;padding:8px 16px;cursor:pointer;color:#666;background:none;border:none;border-bottom:2px solid transparent;margin-bottom:-1px}
+.tab.active{color:#1a1a1a;font-weight:500;border-bottom:2px solid #1a1a1a}
+.tab:hover:not(.active){color:#1a1a1a}
+.section{display:none;padding-top:16px}
+.section.active{display:block}
+.toolbar{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.toolbar input,.toolbar select{font-size:13px;height:32px;padding:0 10px;border-radius:6px;border:1px solid #ddd;background:white;color:#1a1a1a;outline:none}
+.toolbar input{flex:1}
+.toolbar input:focus,.toolbar select:focus{border-color:#1a73e8}
+.btn-add{font-size:13px;height:32px;padding:0 16px;background:#1a1a1a;color:white;border:none;border-radius:6px;cursor:pointer;white-space:nowrap}
+.btn-add:hover{background:#333}
+table{width:100%;border-collapse:collapse;font-size:13px;background:white;border-radius:8px;overflow:hidden;border:1px solid #e8e8e8}
+th{text-align:left;font-size:11px;font-weight:500;color:#888;padding:8px 12px;border-bottom:1px solid #e8e8e8;background:#fafafa;letter-spacing:0.03em;text-transform:uppercase}
+td{padding:10px 12px;border-bottom:1px solid #f0f0f0;vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#fafafa}
+.badge{display:inline-block;font-size:11px;padding:2px 8px;border-radius:20px;font-weight:500;white-space:nowrap}
+.badge-waiting{background:#fef3e2;color:#b45309}
+.badge-progress{background:#e8f0fe;color:#1557b0}
+.badge-callback{background:#fce8f0;color:#9c2c6b}
+.badge-open{background:#e6f4ea;color:#1e6e3b}
+.badge-parts{background:#fce8e6;color:#a33b2e}
+.badge-approved{background:#e8f5e9;color:#2e7d32}
+.badge-scheduled{background:#e3f2fd;color:#1565c0}
+.btn-done{font-size:11px;padding:3px 10px;border-radius:20px;cursor:pointer;background:none;border:1px solid #ddd;color:#666}
+.btn-done:hover{background:#e6f4ea;color:#1e6e3b;border-color:#a8d5b5}
+.btn-del{font-size:13px;padding:2px 6px;border-radius:4px;cursor:pointer;background:none;border:none;color:#ccc}
+.btn-del:hover{color:#ea4335}
+.overdue{color:#ea4335!important;font-weight:500}
+.action-btns{display:flex;gap:4px;align-items:center}
+.notes-cell{max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#666}
+.empty{text-align:center;padding:40px;color:#aaa;font-size:13px;background:white;border-radius:8px;border:1px solid #e8e8e8}
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:100;align-items:center;justify-content:center}
+.modal-bg.open{display:flex}
+.modal{background:white;border-radius:12px;border:1px solid #e0e0e0;padding:20px 24px;width:500px;max-width:95vw;max-height:90vh;overflow-y:auto}
+.modal h3{font-size:15px;font-weight:500;margin-bottom:16px}
+.form-row{margin-bottom:12px}
+.form-row label{display:block;font-size:12px;color:#666;margin-bottom:4px;font-weight:500}
+.form-row input,.form-row select,.form-row textarea{width:100%;font-size:13px;padding:7px 10px;border-radius:6px;border:1px solid #ddd;background:white;color:#1a1a1a;outline:none}
+.form-row input:focus,.form-row select:focus,.form-row textarea:focus{border-color:#1a73e8}
+.form-row textarea{resize:vertical;min-height:64px}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.modal-btns{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;padding-top:16px;border-top:1px solid #f0f0f0}
+.btn-cancel{font-size:13px;padding:7px 18px;background:none;border:1px solid #ddd;border-radius:6px;cursor:pointer;color:#444}
+.btn-cancel:hover{background:#f5f5f5}
+.btn-save{font-size:13px;padding:7px 18px;background:#1a1a1a;color:white;border:none;border-radius:6px;cursor:pointer}
+.btn-save:hover{background:#333}
+.loading{text-align:center;padding:60px;color:#888;font-size:14px}
+</style>
+</head>
+<body>
+
+<div id="auth-screen">
+  <h1>Accutemp Ops Board</h1>
+  <p>Sign in to access your dashboard</p>
+  <div id="g_id_onload"
+    data-client_id="684471418257-d5013g7bv614s9ao4bm9t40h2pgjlalr.apps.googleusercontent.com"
+    data-callback="handleCredential"
+    data-auto_prompt="true">
+  </div>
+  <div class="g_id_signin" data-type="standard" data-size="large" data-text="sign_in_with"></div>
+  <p id="auth-status" style="font-size:12px;color:#888"></p>
+</div>
+
+<div id="app">
+  <div class="header">
+    <div>
+      <h1>Accutemp Ops Board</h1>
+      <div style="font-size:12px;color:#888;margin-top:2px" id="date-display"></div>
+    </div>
+    <div class="header-right">
+      <span class="sync-status" id="sync-status"></span>
+      <span class="user-info" id="user-info"></span>
+      <button class="btn-signout" onclick="signOut()">Sign out</button>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><div class="stat-num" id="s-wo">0</div><div class="stat-label">Open W/Os</div></div>
+    <div class="stat"><div class="stat-num" id="s-parts">0</div><div class="stat-label">Parts Pending</div></div>
+    <div class="stat"><div class="stat-num" id="s-scheduled">0</div><div class="stat-label">Scheduled Jobs</div></div>
+    <div class="stat"><div class="stat-num" id="s-callbacks">0</div><div class="stat-label">Callbacks Due</div></div>
+    <div class="stat"><div class="stat-num" id="s-tasks">0</div><div class="stat-label">My Tasks</div></div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('wo')">Work Orders</button>
+    <button class="tab" onclick="switchTab('parts')">Parts Pipeline</button>
+    <button class="tab" onclick="switchTab('scheduled')">Scheduled Jobs</button>
+    <button class="tab" onclick="switchTab('callbacks')">Callbacks</button>
+    <button class="tab" onclick="switchTab('tasks')">My Tasks</button>
+    <button class="tab" onclick="switchTab('archive')">Archive</button>
+  </div>
+
+  <div id="tab-wo" class="section active">
+    <div class="toolbar">
+      <input type="text" placeholder="Search tech, W/O #, notes..." id="wo-search" oninput="renderWO()">
+      <select id="wo-filter" onchange="renderWO()">
+        <option value="">All statuses</option>
+        <option>In Progress</option>
+        <option>Waiting on Parts</option>
+        <option>Waiting on Customer</option>
+        <option>Needs Follow-up</option>
+        <option>Needs Quote</option>
+        <option>Approved - Awaiting Parts</option>
+      </select>
+      <button class="btn-add" onclick="openModal('wo')">+ Add W/O</button>
+    </div>
+    <table>
+      <thead><tr>
+        <th style="width:90px">W/O #</th>
+        <th style="width:100px">Tech</th>
+        <th style="width:80px">Type</th>
+        <th style="width:160px">Status</th>
+        <th style="width:90px">Due</th>
+        <th>Notes</th>
+        <th style="width:90px"></th>
+      </tr></thead>
+      <tbody id="wo-body"></tbody>
+    </table>
+  </div>
+
+  <div id="tab-parts" class="section">
+    <div class="toolbar">
+      <input type="text" placeholder="Search part, tech, W/O..." id="parts-search" oninput="renderParts()">
+      <button class="btn-add" onclick="openModal('parts')">+ Add Part</button>
+    </div>
+    <table>
+      <thead><tr>
+        <th style="width:90px">W/O #</th>
+        <th style="width:100px">Tech</th>
+        <th>Part</th>
+        <th style="width:100px">Supplier</th>
+        <th style="width:90px">Ordered</th>
+        <th style="width:90px">ETA</th>
+        <th style="width:90px"></th>
+      </tr></thead>
+      <tbody id="parts-body"></tbody>
+    </table>
+  </div>
+
+  <div id="tab-scheduled" class="section">
+    <div class="toolbar">
+      <input type="text" placeholder="Search customer, tech, W/O..." id="scheduled-search" oninput="renderScheduled()">
+      <select id="scheduled-filter" onchange="renderScheduled()">
+        <option value="">All statuses</option>
+        <option>Approved - Awaiting Parts</option>
+        <option>Scheduled</option>
+        <option>On Hold</option>
+      </select>
+      <button class="btn-add" onclick="openModal('scheduled')">+ Add Job</button>
+    </div>
+    <table>
+      <thead><tr>
+        <th style="width:90px">W/O #</th>
+        <th style="width:100px">Tech</th>
+        <th>Customer</th>
+        <th style="width:80px">Type</th>
+        <th style="width:160px">Status</th>
+        <th style="width:90px">Sched. Date</th>
+        <th>Notes</th>
+        <th style="width:90px"></th>
+      </tr></thead>
+      <tbody id="scheduled-body"></tbody>
+    </table>
+  </div>
+
+  <div id="tab-callbacks" class="section">
+    <div class="toolbar">
+      <input type="text" placeholder="Search customer, tech..." id="callbacks-search" oninput="renderCallbacks()">
+      <button class="btn-add" onclick="openModal('callbacks')">+ Add Callback</button>
+    </div>
+    <table>
+      <thead><tr>
+        <th>Customer</th>
+        <th style="width:100px">Tech</th>
+        <th>Reason</th>
+        <th style="width:90px">Flagged</th>
+        <th style="width:90px">Deadline</th>
+        <th style="width:90px"></th>
+      </tr></thead>
+      <tbody id="callbacks-body"></tbody>
+    </table>
+  </div>
+
+  <div id="tab-tasks" class="section">
+    <div class="toolbar">
+      <input type="text" placeholder="Search tasks..." id="tasks-search" oninput="renderTasks()">
+      <button class="btn-add" onclick="openModal('tasks')">+ Add Task</button>
+    </div>
+    <table>
+      <thead><tr>
+        <th>Task</th>
+        <th style="width:120px">Category</th>
+        <th style="width:90px">Due</th>
+        <th>Notes</th>
+        <th style="width:90px"></th>
+      </tr></thead>
+      <tbody id="tasks-body"></tbody>
+    </table>
+  </div>
+
+  <div id="tab-archive" class="section">
+    <p style="font-size:13px;color:#888;margin-bottom:12px">Completed items — cleared from main board.</p>
+    <table>
+      <thead><tr>
+        <th style="width:110px">Type</th>
+        <th>Item</th>
+        <th style="width:100px">Completed</th>
+        <th style="width:60px"></th>
+      </tr></thead>
+      <tbody id="archive-body"></tbody>
+    </table>
+  </div>
+</div>
+
+<div class="modal-bg" id="modal-bg">
+  <div class="modal" id="modal-content"></div>
+</div>
+
+<script>
+const CLIENT_ID = '684471418257-d5013g7bv614s9ao4bm9t40h2pgjlalr.apps.googleusercontent.com';
+const SCOPES = 'https://www.googleapis.com/auth/drive.file';
+const FILE_NAME = 'accutemp-ops-data.json';
+
+let accessToken = null;
+let driveFileId = null;
+let saveTimeout = null;
+let data = {wo:[],parts:[],scheduled:[],callbacks:[],tasks:[],archive:[]};
+
+function handleCredential(response) {
+  const payload = JSON.parse(atob(response.credential.split('.')[1]));
+  document.getElementById('user-info').textContent = payload.email;
+  initOAuth();
+}
+
+function initOAuth() {
+  const client = google.accounts.oauth2.initTokenClient({
+    client_id: CLIENT_ID,
+    scope: SCOPES,
+    callback: (tokenResponse) => {
+      if (tokenResponse.error) { setSync('error','Auth failed'); return; }
+      accessToken = tokenResponse.access_token;
+      document.getElementById('auth-screen').style.display = 'none';
+      document.getElementById('app').style.display = 'block';
+      document.getElementById('date-display').textContent = new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
+      loadFromDrive();
+    }
+  });
+  client.requestAccessToken();
+}
+
+function signOut() {
+  google.accounts.id.disableAutoSelect();
+  accessToken = null;
+  driveFileId = null;
+  document.getElementById('auth-screen').style.display = 'flex';
+  document.getElementById('app').style.display = 'none';
+}
+
+function setSync(state, msg) {
+  const el = document.getElementById('sync-status');
+  el.className = 'sync-status ' + state;
+  el.textContent = msg;
+}
+
+async function loadFromDrive() {
+  setSync('saving', 'Loading...');
+  try {
+    const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=name='${FILE_NAME}'&spaces=drive&fields=files(id,name)`, {
+      headers: { Authorization: 'Bearer ' + accessToken }
+    });
+    const json = await res.json();
+    if (json.files && json.files.length > 0) {
+      driveFileId = json.files[0].id;
+      const fileRes = await fetch(`https://www.googleapis.com/drive/v3/files/${driveFileId}?alt=media`, {
+        headers: { Authorization: 'Bearer ' + accessToken }
+      });
+      const fileData = await fileRes.json();
+      data = Object.assign({wo:[],parts:[],scheduled:[],callbacks:[],tasks:[],archive:[]}, fileData);
+      setSync('saved', 'Loaded from Drive');
+    } else {
+      setSync('saved', 'New file — ready');
+    }
+  } catch(e) {
+    setSync('error', 'Load failed');
+  }
+  updateStats();
+  renderWO();
+}
+
+async function saveToDrive() {
+  if (!accessToken) return;
+  setSync('saving', 'Saving...');
+  try {
+    const body = JSON.stringify(data);
+    if (!driveFileId) {
+      const meta = await fetch('https://www.googleapis.com/drive/v3/files', {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: FILE_NAME, mimeType: 'application/json' })
+      });
+      const metaJson = await meta.json();
+      driveFileId = metaJson.id;
+    }
+    await fetch(`https://www.googleapis.com/upload/drive/v3/files/${driveFileId}?uploadType=media`, {
+      method: 'PATCH',
+      headers: { Authorization: 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
+      body
+    });
+    setSync('saved', 'Saved ✓ ' + new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}));
+  } catch(e) {
+    setSync('error', 'Save failed');
+  }
+}
+
+function scheduleSave() {
+  clearTimeout(saveTimeout);
+  saveTimeout = setTimeout(saveToDrive, 800);
+}
+
+function fmtDate(d) { if(!d) return '—'; const[y,m,day]=d.split('-'); return`${m}/${day}/${y.slice(2)}`; }
+function isOverdue(d) { if(!d) return false; return new Date(d) < new Date(new Date().toDateString()); }
+
+function badge(status) {
+  const map = {
+    'In Progress':'badge-progress','Waiting on Parts':'badge-parts',
+    'Waiting on Customer':'badge-callback','Needs Follow-up':'badge-callback',
+    'Needs Quote':'badge-waiting','Approved - Awaiting Parts':'badge-approved',
+    'Scheduled':'badge-scheduled','On Hold':'badge-waiting',
+    'Open':'badge-open','Won':'badge-open','Lost':'badge-parts','No Response':'badge-waiting'
+  };
+  return `<span class="badge ${map[status]||'badge-open'}">${status}</span>`;
+}
+
+function updateStats() {
+  document.getElementById('s-wo').textContent = data.wo.length;
+  document.getElementById('s-parts').textContent = data.parts.length;
+  document.getElementById('s-scheduled').textContent = data.scheduled.length;
+  document.getElementById('s-callbacks').textContent = data.callbacks.length;
+  document.getElementById('s-tasks').textContent = data.tasks.length;
+}
+
+function switchTab(t) {
+  const tabs = ['wo','parts','scheduled','callbacks','tasks','archive'];
+  document.querySelectorAll('.tab').forEach((el,i) => el.classList.toggle('active', tabs[i]===t));
+  document.querySelectorAll('.section').forEach(el => el.classList.remove('active'));
+  document.getElementById('tab-'+t).classList.add('active');
+  const renders = {wo:renderWO,parts:renderParts,scheduled:renderScheduled,callbacks:renderCallbacks,tasks:renderTasks,archive:renderArchive};
+  renders[t]();
+}
+
+function markDone(type, idx) {
+  const item = data[type][idx];
+  const labels = {
+    wo: r => `W/O #${r.wo_num} — ${r.tech}`,
+    parts: r => `${r.part} (W/O #${r.wo_num})`,
+    scheduled: r => `${r.customer} — W/O #${r.wo_num}`,
+    callbacks: r => `Callback: ${r.customer}`,
+    tasks: r => r.task
+  };
+  data.archive.unshift({type, label: labels[type](item), date: new Date().toISOString().split('T')[0], item});
+  data[type].splice(idx, 1);
+  updateStats();
+  scheduleSave();
+  switchTab(type);
+}
+
+function delItem(type, idx) { data[type].splice(idx,1); updateStats(); scheduleSave(); switchTab(type); }
+function delArchive(idx) { data.archive.splice(idx,1); scheduleSave(); renderArchive(); }
+
+function renderEmpty(id) { document.getElementById(id).innerHTML = `<tr><td colspan="10" class="empty">No items — click + to add</td></tr>`; }
+
+function renderWO() {
+  const q = (document.getElementById('wo-search').value||'').toLowerCase();
+  const f = document.getElementById('wo-filter').value;
+  const rows = data.wo.filter(r => (!q||(r.wo_num+r.tech+r.notes+r.type).toLowerCase().includes(q)) && (!f||r.status===f));
+  const tbody = document.getElementById('wo-body');
+  if (!rows.length) { renderEmpty('wo-body'); return; }
+  tbody.innerHTML = rows.map(r => {
+    const i = data.wo.indexOf(r);
+    return `<tr>
+      <td style="font-weight:500">${r.wo_num||'—'}</td>
+      <td>${r.tech||'—'}</td>
+      <td>${r.type||'—'}</td>
+      <td>${badge(r.status)}</td>
+      <td class="${isOverdue(r.due)?'overdue':''}">${fmtDate(r.due)}</td>
+      <td class="notes-cell" title="${r.notes||''}">${r.notes||'—'}</td>
+      <td><div class="action-btns"><button class="btn-done" onclick="markDone('wo',${i})">Done</button><button class="btn-del" onclick="delItem('wo',${i})">✕</button></div></td>
+    </tr>`;
+  }).join('');
+}
+
+function renderParts() {
+  const q = (document.getElementById('parts-search').value||'').toLowerCase();
+  const rows = data.parts.filter(r => !q||(r.wo_num+r.tech+r.part+r.supplier).toLowerCase().includes(q));
+  const tbody = document.getElementById('parts-body');
+  if (!rows.length) { renderEmpty('parts-body'); return; }
+  tbody.innerHTML = rows.map(r => {
+    const i = data.parts.indexOf(r);
+    return `<tr>
+      <td style="font-weight:500">${r.wo_num||'—'}</td>
+      <td>${r.tech||'—'}</td>
+      <td>${r.part||'—'}</td>
+      <td>${r.supplier||'—'}</td>
+      <td>${fmtDate(r.ordered)}</td>
+      <td class="${isOverdue(r.eta)?'overdue':''}">${fmtDate(r.eta)}</td>
+      <td><div class="action-btns"><button class="btn-done" onclick="markDone('parts',${i})">In</button><button class="btn-del" onclick="delItem('parts',${i})">✕</button></div></td>
+    </tr>`;
+  }).join('');
+}
+
+function renderScheduled() {
+  const q = (document.getElementById('scheduled-search').value||'').toLowerCase();
+  const f = document.getElementById('scheduled-filter').value;
+  const rows = data.scheduled.filter(r => (!q||(r.wo_num+r.tech+r.customer+r.notes).toLowerCase().includes(q)) && (!f||r.status===f));
+  const tbody = document.getElementById('scheduled-body');
+  if (!rows.length) { renderEmpty('scheduled-body'); return; }
+  tbody.innerHTML = rows.map(r => {
+    const i = data.scheduled.indexOf(r);
+    return `<tr>
+      <td style="font-weight:500">${r.wo_num||'—'}</td>
+      <td>${r.tech||'—'}</td>
+      <td>${r.customer||'—'}</td>
+      <td>${r.type||'—'}</td>
+      <td>${badge(r.status)}</td>
+      <td class="${isOverdue(r.date)?'overdue':''}">${fmtDate(r.date)}</td>
+      <td class="notes-cell" title="${r.notes||''}">${r.notes||'—'}</td>
+      <td><div class="action-btns"><button class="btn-done" onclick="markDone('scheduled',${i})">Done</button><button class="btn-del" onclick="delItem('scheduled',${i})">✕</button></div></td>
+    </tr>`;
+  }).join('');
+}
+
+function renderCallbacks() {
+  const q = (document.getElementById('callbacks-search').value||'').toLowerCase();
+  const rows = data.callbacks.filter(r => !q||(r.customer+r.tech+r.reason).toLowerCase().includes(q));
+  const tbody = document.getElementById('callbacks-body');
+  if (!rows.length) { renderEmpty('callbacks-body'); return; }
+  tbody.innerHTML = rows.map(r => {
+    const i = data.callbacks.indexOf(r);
+    return `<tr>
+      <td>${r.customer||'—'}</td>
+      <td>${r.tech||'—'}</td>
+      <td class="notes-cell" title="${r.reason||''}">${r.reason||'—'}</td>
+      <td>${fmtDate(r.flagged)}</td>
+      <td class="${isOverdue(r.deadline)?'overdue':''}">${fmtDate(r.deadline)}</td>
+      <td><div class="action-btns"><button class="btn-done" onclick="markDone('callbacks',${i})">Done</button><button class="btn-del" onclick="delItem('callbacks',${i})">✕</button></div></td>
+    </tr>`;
+  }).join('');
+}
+
+function renderTasks() {
+  const q = (document.getElementById('tasks-search').value||'').toLowerCase();
+  const rows = data.tasks.filter(r => !q||(r.task+r.category+r.notes).toLowerCase().includes(q));
+  const tbody = document.getElementById('tasks-body');
+  if (!rows.length) { renderEmpty('tasks-body'); return; }
+  tbody.innerHTML = rows.map(r => {
+    const i = data.tasks.indexOf(r);
+    return `<tr>
+      <td style="font-weight:500">${r.task||'—'}</td>
+      <td>${r.category||'—'}</td>
+      <td class="${isOverdue(r.due)?'overdue':''}">${fmtDate(r.due)}</td>
+      <td class="notes-cell" title="${r.notes||''}">${r.notes||'—'}</td>
+      <td><div class="action-btns"><button class="btn-done" onclick="markDone('tasks',${i})">Done</button><button class="btn-del" onclick="delItem('tasks',${i})">✕</button></div></td>
+    </tr>`;
+  }).join('');
+}
+
+function renderArchive() {
+  const tbody = document.getElementById('archive-body');
+  if (!data.archive.length) { renderEmpty('archive-body'); return; }
+  tbody.innerHTML = data.archive.map((r,i) => `<tr>
+    <td><span class="badge badge-open">${r.type}</span></td>
+    <td>${r.label}</td>
+    <td>${fmtDate(r.date)}</td>
+    <td><button class="btn-del" onclick="delArchive(${i})">✕</button></td>
+  </tr>`).join('');
+}
+
+const MODALS = {
+  wo: `<h3>Add Work Order</h3>
+    <div class="form-grid">
+      <div class="form-row"><label>W/O Number</label><input id="f-wo_num" placeholder="e.g. 10432"></div>
+      <div class="form-row"><label>Tech Name</label><input id="f-tech" placeholder="e.g. Mike"></div>
+      <div class="form-row"><label>Job Type</label><select id="f-type"><option>Service</option><option>PM</option><option>Install</option></select></div>
+      <div class="form-row"><label>Status</label><select id="f-status"><option>In Progress</option><option>Waiting on Parts</option><option>Waiting on Customer</option><option>Needs Follow-up</option><option>Needs Quote</option><option>Approved - Awaiting Parts</option></select></div>
+      <div class="form-row"><label>Expected Close</label><input type="date" id="f-due"></div>
+    </div>
+    <div class="form-row"><label>Notes</label><textarea id="f-notes" placeholder="Any important info..."></textarea></div>
+    <div class="modal-btns"><button class="btn-cancel" onclick="closeModal()">Cancel</button><button class="btn-save" onclick="saveItem('wo')">Add</button></div>`,
+  parts: `<h3>Add Parts Order</h3>
+    <div class="form-grid">
+      <div class="form-row"><label>W/O Number</label><input id="f-wo_num" placeholder="e.g. 10432"></div>
+      <div class="form-row"><label>Tech Name</label><input id="f-tech" placeholder="e.g. Mike"></div>
+      <div class="form-row"><label>Part Name</label><input id="f-part" placeholder="e.g. TXV R410A"></div>
+      <div class="form-row"><label>Supplier</label><input id="f-supplier" placeholder="e.g. Johnstone"></div>
+      <div class="form-row"><label>Order Date</label><input type="date" id="f-ordered"></div>
+      <div class="form-row"><label>ETA</label><input type="date" id="f-eta"></div>
+    </div>
+    <div class="modal-btns"><button class="btn-cancel" onclick="closeModal()">Cancel</button><button class="btn-save" onclick="saveItem('parts')">Add</button></div>`,
+  scheduled: `<h3>Add Scheduled Job</h3>
+    <div class="form-grid">
+      <div class="form-row"><label>W/O Number</label><input id="f-wo_num" placeholder="e.g. 10432"></div>
+      <div class="form-row"><label>Tech</label><input id="f-tech" placeholder="e.g. Dave"></div>
+      <div class="form-row"><label>Customer</label><input id="f-customer" placeholder="Customer name"></div>
+      <div class="form-row"><label>Job Type</label><select id="f-type"><option>Service</option><option>PM</option><option>Install</option></select></div>
+      <div class="form-row"><label>Status</label><select id="f-status"><option>Approved - Awaiting Parts</option><option>Scheduled</option><option>On Hold</option></select></div>
+      <div class="form-row"><label>Scheduled Date</label><input type="date" id="f-date"></div>
+    </div>
+    <div class="form-row"><label>Notes</label><textarea id="f-notes" placeholder="What's needed, any blockers..."></textarea></div>
+    <div class="modal-btns"><button class="btn-cancel" onclick="closeModal()">Cancel</button><button class="btn-save" onclick="saveItem('scheduled')">Add</button></div>`,
+  callbacks: `<h3>Add Callback</h3>
+    <div class="form-grid">
+      <div class="form-row"><label>Customer</label><input id="f-customer" placeholder="Customer name"></div>
+      <div class="form-row"><label>Tech</label><input id="f-tech" placeholder="Tech assigned"></div>
+      <div class="form-row"><label>Date Flagged</label><input type="date" id="f-flagged"></div>
+      <div class="form-row"><label>Deadline</label><input type="date" id="f-deadline"></div>
+    </div>
+    <div class="form-row"><label>Reason</label><textarea id="f-reason" placeholder="Why callback is needed..."></textarea></div>
+    <div class="modal-btns"><button class="btn-cancel" onclick="closeModal()">Cancel</button><button class="btn-save" onclick="saveItem('callbacks')">Add</button></div>`,
+  tasks: `<h3>Add Task</h3>
+    <div class="form-grid">
+      <div class="form-row"><label>Task</label><input id="f-task" placeholder="What needs to get done"></div>
+      <div class="form-row"><label>Category</label><select id="f-category"><option>Admin</option><option>Meeting</option><option>Customer</option><option>HR</option><option>Equipment</option><option>Other</option></select></div>
+      <div class="form-row"><label>Due Date</label><input type="date" id="f-due"></div>
+    </div>
+    <div class="form-row"><label>Notes</label><textarea id="f-notes" placeholder="Any context..."></textarea></div>
+    <div class="modal-btns"><button class="btn-cancel" onclick="closeModal()">Cancel</button><button class="btn-save" onclick="saveItem('tasks')">Add</button></div>`
+};
+
+let currentType = '';
+function openModal(type) { currentType=type; document.getElementById('modal-content').innerHTML=MODALS[type]; document.getElementById('modal-bg').classList.add('open'); }
+function closeModal() { document.getElementById('modal-bg').classList.remove('open'); }
+function g(id) { const el=document.getElementById(id); return el?el.value.trim():''; }
+
+function saveItem(type) {
+  let item = {};
+  if (type==='wo') item={wo_num:g('f-wo_num'),tech:g('f-tech'),type:g('f-type'),status:g('f-status'),due:g('f-due'),notes:g('f-notes')};
+  else if (type==='parts') item={wo_num:g('f-wo_num'),tech:g('f-tech'),part:g('f-part'),supplier:g('f-supplier'),ordered:g('f-ordered'),eta:g('f-eta')};
+  else if (type==='scheduled') item={wo_num:g('f-wo_num'),tech:g('f-tech'),customer:g('f-customer'),type:g('f-type'),status:g('f-status'),date:g('f-date'),notes:g('f-notes')};
+  else if (type==='callbacks') item={customer:g('f-customer'),tech:g('f-tech'),flagged:g('f-flagged'),deadline:g('f-deadline'),reason:g('f-reason')};
+  else if (type==='tasks') item={task:g('f-task'),category:g('f-category'),due:g('f-due'),notes:g('f-notes')};
+  data[type].push(item);
+  updateStats();
+  scheduleSave();
+  closeModal();
+  switchTab(type);
+}
+
+document.getElementById('modal-bg').addEventListener('click', function(e) { if(e.target===this) closeModal(); });
+</script>
+</body>
+</html>
