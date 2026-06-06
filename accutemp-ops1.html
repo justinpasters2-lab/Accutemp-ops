@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Accutemp Ops Board</title>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f5f3;color:#1a1a1a;min-height:100vh}
@@ -18,15 +19,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .user-info{font-size:13px;color:#666}
 .btn-signout{font-size:12px;padding:4px 12px;border:1px solid #ddd;border-radius:6px;background:white;cursor:pointer;color:#444}
 .btn-signout:hover{background:#f5f5f5}
+.btn-pdf{font-size:12px;padding:4px 12px;border:1px solid #1a73e8;border-radius:6px;background:white;cursor:pointer;color:#1a73e8;font-weight:500}
+.btn-pdf:hover{background:#e8f0fe}
 .sync-status{font-size:12px;color:#888;min-width:140px;text-align:right}
 .sync-status.saving{color:#1a73e8}
 .sync-status.saved{color:#34a853}
 .sync-status.error{color:#ea4335}
-.stats{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:20px}
+.stats{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:20px}
 .stat{background:white;border-radius:8px;padding:12px 14px;border:1px solid #e8e8e8}
-.stat-num{font-size:24px;font-weight:500}
+.stat-num{font-size:22px;font-weight:500}
 .stat-label{font-size:11px;color:#888;margin-top:2px}
-.tabs{display:flex;gap:0;border-bottom:1px solid #e0e0e0;margin-bottom:0}
+.tabs{display:flex;gap:0;border-bottom:1px solid #e0e0e0;margin-bottom:0;flex-wrap:wrap}
 .tab{font-size:13px;padding:8px 14px;cursor:pointer;color:#666;background:none;border:none;border-bottom:2px solid transparent;margin-bottom:-1px;position:relative;white-space:nowrap}
 .tab.active{color:#1a1a1a;font-weight:500;border-bottom:2px solid #1a1a1a}
 .tab:hover:not(.active){color:#1a1a1a}
@@ -45,7 +48,6 @@ th{text-align:left;font-size:11px;font-weight:500;color:#888;padding:8px 12px;bo
 td{padding:10px 12px;border-bottom:1px solid #f0f0f0;vertical-align:middle}
 tr:last-child td{border-bottom:none}
 tr:hover td{background:#fafafa}
-tr.clickable{cursor:pointer}
 .badge{display:inline-block;font-size:11px;padding:2px 8px;border-radius:20px;font-weight:500;white-space:nowrap}
 .badge-waiting{background:#fef3e2;color:#b45309}
 .badge-progress{background:#e8f0fe;color:#1557b0}
@@ -54,6 +56,10 @@ tr.clickable{cursor:pointer}
 .badge-parts{background:#fce8e6;color:#a33b2e}
 .badge-approved{background:#e8f5e9;color:#2e7d32}
 .badge-scheduled{background:#e3f2fd;color:#1565c0}
+.badge-quoted{background:#f3e8fd;color:#6b21a8}
+.badge-over{background:#fce8e6;color:#a33b2e}
+.badge-under{background:#e6f4ea;color:#1e6e3b}
+.badge-onbudget{background:#fef3e2;color:#b45309}
 .btn-done{font-size:11px;padding:3px 10px;border-radius:20px;cursor:pointer;background:none;border:1px solid #ddd;color:#666}
 .btn-done:hover{background:#e6f4ea;color:#1e6e3b;border-color:#a8d5b5}
 .btn-edit{font-size:11px;padding:3px 10px;border-radius:20px;cursor:pointer;background:none;border:1px solid #ddd;color:#666}
@@ -62,27 +68,40 @@ tr.clickable{cursor:pointer}
 .btn-del:hover{color:#ea4335}
 .overdue{color:#ea4335!important;font-weight:500}
 .action-btns{display:flex;gap:4px;align-items:center}
-.notes-cell{max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#666;cursor:pointer}
-.notes-cell:hover{color:#1a73e8;text-decoration:underline}
+.notes-cell{max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#666}
 .empty{text-align:center;padding:40px;color:#aaa;font-size:13px;background:white;border-radius:8px;border:1px solid #e8e8e8}
 .modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:100;align-items:center;justify-content:center}
 .modal-bg.open{display:flex}
-.modal{background:white;border-radius:12px;border:1px solid #e0e0e0;padding:20px 24px;width:520px;max-width:95vw;max-height:90vh;overflow-y:auto}
+.modal{background:white;border-radius:12px;border:1px solid #e0e0e0;padding:20px 24px;width:540px;max-width:95vw;max-height:90vh;overflow-y:auto}
 .modal h3{font-size:15px;font-weight:500;margin-bottom:16px}
 .form-row{margin-bottom:12px}
 .form-row label{display:block;font-size:12px;color:#666;margin-bottom:4px;font-weight:500}
 .form-row input,.form-row select,.form-row textarea{width:100%;font-size:13px;padding:7px 10px;border-radius:6px;border:1px solid #ddd;background:white;color:#1a1a1a;outline:none}
 .form-row input:focus,.form-row select:focus,.form-row textarea:focus{border-color:#1a73e8}
-.form-row textarea{resize:vertical;min-height:80px}
+.form-row textarea{resize:vertical;min-height:70px}
 .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.form-grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
 .modal-btns{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;padding-top:16px;border-top:1px solid #f0f0f0}
 .btn-cancel{font-size:13px;padding:7px 18px;background:none;border:1px solid #ddd;border-radius:6px;cursor:pointer;color:#444}
 .btn-cancel:hover{background:#f5f5f5}
 .btn-save{font-size:13px;padding:7px 18px;background:#1a1a1a;color:white;border:none;border-radius:6px;cursor:pointer}
 .btn-save:hover{background:#333}
-.notes-modal{max-width:480px}
-.notes-modal p{font-size:14px;line-height:1.6;color:#333;white-space:pre-wrap;word-break:break-word}
-.notes-modal .meta{font-size:12px;color:#888;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid #f0f0f0}
+.quoted-fields{background:#f9f5ff;border-radius:8px;padding:12px;margin-top:8px;border:1px solid #e9d5ff;display:none}
+.quoted-fields.show{display:block}
+.quoted-fields-label{font-size:11px;font-weight:600;color:#6b21a8;margin-bottom:10px;text-transform:uppercase;letter-spacing:0.05em}
+.tech-list{display:flex;flex-direction:column;gap:6px;margin-top:4px}
+.tech-entry{display:flex;gap:6px;align-items:center}
+.tech-entry input{flex:1}
+.btn-add-tech{font-size:12px;padding:4px 10px;background:none;border:1px dashed #ddd;border-radius:6px;cursor:pointer;color:#666;margin-top:4px}
+.btn-add-tech:hover{border-color:#1a73e8;color:#1a73e8}
+.btn-remove-tech{font-size:12px;padding:2px 6px;background:none;border:none;cursor:pointer;color:#ccc}
+.btn-remove-tech:hover{color:#ea4335}
+.completion-section{background:#f0f9ff;border-radius:8px;padding:14px;border:1px solid #bae6fd;margin-bottom:12px}
+.completion-section h4{font-size:13px;font-weight:500;color:#0369a1;margin-bottom:10px}
+.variance-display{font-size:13px;padding:8px 12px;border-radius:6px;margin-top:8px;font-weight:500}
+.variance-over{background:#fce8e6;color:#a33b2e}
+.variance-under{background:#e6f4ea;color:#1e6e3b}
+.variance-even{background:#fef3e2;color:#b45309}
 </style>
 </head>
 <body>
@@ -105,6 +124,7 @@ tr.clickable{cursor:pointer}
       <div style="font-size:12px;color:#888;margin-top:2px" id="date-display"></div>
     </div>
     <div class="header-right">
+      <button class="btn-pdf" onclick="exportPDF()">⬇ Weekly PDF</button>
       <span class="sync-status" id="sync-status"></span>
       <span class="user-info" id="user-info"></span>
       <button class="btn-signout" onclick="signOut()">Sign out</button>
@@ -113,6 +133,7 @@ tr.clickable{cursor:pointer}
 
   <div class="stats">
     <div class="stat"><div class="stat-num" id="s-wo">0</div><div class="stat-label">Open W/Os</div></div>
+    <div class="stat"><div class="stat-num" id="s-quoted">0</div><div class="stat-label">Quoted Jobs</div></div>
     <div class="stat"><div class="stat-num" id="s-parts">0</div><div class="stat-label">Parts Pending</div></div>
     <div class="stat"><div class="stat-num" id="s-scheduled">0</div><div class="stat-label">Scheduled Jobs</div></div>
     <div class="stat"><div class="stat-num" id="s-callbacks">0</div><div class="stat-label">Callbacks Due</div></div>
@@ -121,6 +142,7 @@ tr.clickable{cursor:pointer}
 
   <div class="tabs">
     <button class="tab active" onclick="switchTab('wo')" id="tabbtn-wo">Work Orders</button>
+    <button class="tab" onclick="switchTab('quoted')" id="tabbtn-quoted">Quoted Jobs</button>
     <button class="tab" onclick="switchTab('parts')" id="tabbtn-parts">Parts Pipeline</button>
     <button class="tab" onclick="switchTab('scheduled')" id="tabbtn-scheduled">Scheduled Jobs</button>
     <button class="tab" onclick="switchTab('callbacks')" id="tabbtn-callbacks">Callbacks</button>
@@ -128,482 +150,350 @@ tr.clickable{cursor:pointer}
     <button class="tab" onclick="switchTab('archive')" id="tabbtn-archive">Archive</button>
   </div>
 
+  <!-- Work Orders -->
   <div id="tab-wo" class="section active">
     <div class="toolbar">
       <input type="text" placeholder="Search tech, W/O #, notes..." id="wo-search" oninput="renderWO()">
       <select id="wo-tech-filter" onchange="renderWO()"><option value="">All techs</option></select>
       <select id="wo-filter" onchange="renderWO()">
         <option value="">All statuses</option>
-        <option>In Progress</option>
-        <option>Waiting on Parts</option>
-        <option>Waiting on Customer</option>
-        <option>Needs Follow-up</option>
-        <option>Needs Quote</option>
-        <option>Approved - Awaiting Parts</option>
+        <option>In Progress</option><option>Waiting on Parts</option>
+        <option>Waiting on Customer</option><option>Needs Follow-up</option><option>Needs Quote</option>
       </select>
-      <button class="btn-add" onclick="openModal('wo', null)">+ Add W/O</button>
+      <button class="btn-add" onclick="openModal('wo',null)">+ Add W/O</button>
     </div>
-    <table>
-      <thead><tr>
-        <th style="width:90px">W/O #</th>
-        <th style="width:100px">Tech</th>
-        <th style="width:80px">Type</th>
-        <th style="width:170px">Status</th>
-        <th style="width:90px">Due</th>
-        <th>Notes</th>
-        <th style="width:110px"></th>
-      </tr></thead>
-      <tbody id="wo-body"></tbody>
-    </table>
+    <table><thead><tr>
+      <th style="width:90px">W/O #</th><th style="width:100px">Tech</th><th style="width:80px">Type</th>
+      <th style="width:160px">Status</th><th style="width:90px">Due</th><th>Notes</th><th style="width:110px"></th>
+    </tr></thead><tbody id="wo-body"></tbody></table>
   </div>
 
+  <!-- Quoted Jobs -->
+  <div id="tab-quoted" class="section">
+    <div class="toolbar">
+      <input type="text" placeholder="Search tech, W/O #, customer..." id="quoted-search" oninput="renderQuoted()">
+      <select id="quoted-tech-filter" onchange="renderQuoted()"><option value="">All techs</option></select>
+      <select id="quoted-status-filter" onchange="renderQuoted()">
+        <option value="">All statuses</option>
+        <option>Scheduled</option><option>In Progress</option><option>Approved - Awaiting Parts</option><option>On Hold</option>
+      </select>
+      <button class="btn-add" onclick="openModal('quoted',null)">+ Add Quoted Job</button>
+    </div>
+    <table><thead><tr>
+      <th style="width:90px">W/O #</th><th style="width:100px">Tech(s)</th><th>Customer / Site</th>
+      <th style="width:80px">Type</th><th style="width:90px">Hrs Q'd</th><th style="width:90px">Cost Q'd</th>
+      <th style="width:150px">Status</th><th style="width:90px">Date</th><th style="width:110px"></th>
+    </tr></thead><tbody id="quoted-body"></tbody></table>
+  </div>
+
+  <!-- Parts Pipeline -->
   <div id="tab-parts" class="section">
     <div class="toolbar">
       <input type="text" placeholder="Search part, tech, W/O..." id="parts-search" oninput="renderParts()">
       <select id="parts-tech-filter" onchange="renderParts()"><option value="">All techs</option></select>
-      <button class="btn-add" onclick="openModal('parts', null)">+ Add Part</button>
+      <button class="btn-add" onclick="openModal('parts',null)">+ Add Part</button>
     </div>
-    <table>
-      <thead><tr>
-        <th style="width:90px">W/O #</th>
-        <th style="width:100px">Tech</th>
-        <th>Part</th>
-        <th style="width:100px">Supplier</th>
-        <th style="width:90px">Ordered</th>
-        <th style="width:90px">ETA</th>
-        <th style="width:110px"></th>
-      </tr></thead>
-      <tbody id="parts-body"></tbody>
-    </table>
+    <table><thead><tr>
+      <th style="width:90px">W/O #</th><th style="width:100px">Tech</th><th>Part</th>
+      <th style="width:100px">Supplier</th><th style="width:90px">Ordered</th><th style="width:90px">ETA</th><th style="width:110px"></th>
+    </tr></thead><tbody id="parts-body"></tbody></table>
   </div>
 
+  <!-- Scheduled Jobs -->
   <div id="tab-scheduled" class="section">
     <div class="toolbar">
       <input type="text" placeholder="Search customer, tech, W/O..." id="scheduled-search" oninput="renderScheduled()">
       <select id="scheduled-tech-filter" onchange="renderScheduled()"><option value="">All techs</option></select>
       <select id="scheduled-filter" onchange="renderScheduled()">
         <option value="">All statuses</option>
-        <option>Approved - Awaiting Parts</option>
-        <option>Scheduled</option>
-        <option>On Hold</option>
+        <option>Approved - Awaiting Parts</option><option>Scheduled</option><option>On Hold</option>
       </select>
-      <button class="btn-add" onclick="openModal('scheduled', null)">+ Add Job</button>
+      <button class="btn-add" onclick="openModal('scheduled',null)">+ Add Job</button>
     </div>
-    <table>
-      <thead><tr>
-        <th style="width:90px">W/O #</th>
-        <th style="width:100px">Tech</th>
-        <th>Customer</th>
-        <th style="width:80px">Type</th>
-        <th style="width:170px">Status</th>
-        <th style="width:90px">Sched. Date</th>
-        <th>Notes</th>
-        <th style="width:110px"></th>
-      </tr></thead>
-      <tbody id="scheduled-body"></tbody>
-    </table>
+    <table><thead><tr>
+      <th style="width:90px">W/O #</th><th style="width:100px">Tech</th><th>Customer</th>
+      <th style="width:80px">Type</th><th style="width:160px">Status</th><th style="width:90px">Sched. Date</th>
+      <th>Notes</th><th style="width:110px"></th>
+    </tr></thead><tbody id="scheduled-body"></tbody></table>
   </div>
 
+  <!-- Callbacks -->
   <div id="tab-callbacks" class="section">
     <div class="toolbar">
       <input type="text" placeholder="Search customer, tech..." id="callbacks-search" oninput="renderCallbacks()">
       <select id="callbacks-tech-filter" onchange="renderCallbacks()"><option value="">All techs</option></select>
-      <button class="btn-add" onclick="openModal('callbacks', null)">+ Add Callback</button>
+      <button class="btn-add" onclick="openModal('callbacks',null)">+ Add Callback</button>
     </div>
-    <table>
-      <thead><tr>
-        <th>Customer</th>
-        <th style="width:100px">Tech</th>
-        <th>Reason</th>
-        <th style="width:90px">Flagged</th>
-        <th style="width:90px">Deadline</th>
-        <th style="width:110px"></th>
-      </tr></thead>
-      <tbody id="callbacks-body"></tbody>
-    </table>
+    <table><thead><tr>
+      <th>Customer</th><th style="width:100px">Tech</th><th>Reason</th>
+      <th style="width:90px">Flagged</th><th style="width:90px">Deadline</th><th style="width:110px"></th>
+    </tr></thead><tbody id="callbacks-body"></tbody></table>
   </div>
 
+  <!-- My Tasks -->
   <div id="tab-tasks" class="section">
     <div class="toolbar">
       <input type="text" placeholder="Search tasks..." id="tasks-search" oninput="renderTasks()">
-      <button class="btn-add" onclick="openModal('tasks', null)">+ Add Task</button>
+      <button class="btn-add" onclick="openModal('tasks',null)">+ Add Task</button>
     </div>
-    <table>
-      <thead><tr>
-        <th>Task</th>
-        <th style="width:120px">Category</th>
-        <th style="width:90px">Due</th>
-        <th>Notes</th>
-        <th style="width:110px"></th>
-      </tr></thead>
-      <tbody id="tasks-body"></tbody>
-    </table>
+    <table><thead><tr>
+      <th>Task</th><th style="width:120px">Category</th><th style="width:90px">Due</th><th>Notes</th><th style="width:110px"></th>
+    </tr></thead><tbody id="tasks-body"></tbody></table>
   </div>
 
+  <!-- Archive -->
   <div id="tab-archive" class="section">
     <p style="font-size:13px;color:#888;margin-bottom:12px">Completed items — cleared from main board.</p>
-    <table>
-      <thead><tr>
-        <th style="width:110px">Type</th>
-        <th>Item</th>
-        <th style="width:100px">Completed</th>
-        <th style="width:60px"></th>
-      </tr></thead>
-      <tbody id="archive-body"></tbody>
-    </table>
+    <table><thead><tr>
+      <th style="width:110px">Type</th><th>Item</th><th style="width:100px">Completed</th><th style="width:60px"></th>
+    </tr></thead><tbody id="archive-body"></tbody></table>
   </div>
 </div>
 
-<div class="modal-bg" id="modal-bg">
-  <div class="modal" id="modal-content"></div>
-</div>
-
-<div class="modal-bg" id="notes-modal-bg">
-  <div class="modal notes-modal" id="notes-modal-content"></div>
-</div>
+<div class="modal-bg" id="modal-bg"><div class="modal" id="modal-content"></div></div>
+<div class="modal-bg" id="completion-modal-bg"><div class="modal" id="completion-modal-content"></div></div>
 
 <script>
-const CLIENT_ID = '684471418257-d5013g7bv614s9ao4bm9t40h2pgjlalr.apps.googleusercontent.com';
-const SCOPES = 'https://www.googleapis.com/auth/drive.file';
-const FILE_NAME = 'accutemp-ops-data.json';
+const CLIENT_ID='684471418257-d5013g7bv614s9ao4bm9t40h2pgjlalr.apps.googleusercontent.com';
+const SCOPES='https://www.googleapis.com/auth/drive.file';
+const FILE_NAME='accutemp-ops-data.json';
+let accessToken=null,driveFileId=null,saveTimeout=null,editingIndex=null,editingType=null;
+let data={wo:[],quoted:[],parts:[],scheduled:[],callbacks:[],tasks:[],archive:[]};
 
-let accessToken = null;
-let driveFileId = null;
-let saveTimeout = null;
-let editingIndex = null;
-let editingType = null;
-let data = {wo:[],parts:[],scheduled:[],callbacks:[],tasks:[],archive:[]};
-
-function handleCredential(response) {
-  const payload = JSON.parse(atob(response.credential.split('.')[1]));
-  document.getElementById('user-info').textContent = payload.email;
+function handleCredential(r){
+  const p=JSON.parse(atob(r.credential.split('.')[1]));
+  document.getElementById('user-info').textContent=p.email;
   initOAuth();
 }
-
-function initOAuth() {
-  const client = google.accounts.oauth2.initTokenClient({
-    client_id: CLIENT_ID,
-    scope: SCOPES,
-    callback: (tokenResponse) => {
-      if (tokenResponse.error) { setSync('error','Auth failed'); return; }
-      accessToken = tokenResponse.access_token;
-      document.getElementById('auth-screen').style.display = 'none';
-      document.getElementById('app').style.display = 'block';
-      document.getElementById('date-display').textContent = new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
-      loadFromDrive();
+function initOAuth(){
+  const c=google.accounts.oauth2.initTokenClient({client_id:CLIENT_ID,scope:SCOPES,callback:(t)=>{
+    if(t.error){setSync('error','Auth failed');return;}
+    accessToken=t.access_token;
+    document.getElementById('auth-screen').style.display='none';
+    document.getElementById('app').style.display='block';
+    document.getElementById('date-display').textContent=new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
+    loadFromDrive();
+  }});
+  c.requestAccessToken();
+}
+function signOut(){google.accounts.id.disableAutoSelect();accessToken=null;driveFileId=null;document.getElementById('auth-screen').style.display='flex';document.getElementById('app').style.display='none';}
+function setSync(s,m){const e=document.getElementById('sync-status');e.className='sync-status '+s;e.textContent=m;}
+async function loadFromDrive(){
+  setSync('saving','Loading...');
+  try{
+    const r=await fetch(`https://www.googleapis.com/drive/v3/files?q=name='${FILE_NAME}'&spaces=drive&fields=files(id,name)`,{headers:{Authorization:'Bearer '+accessToken}});
+    const j=await r.json();
+    if(j.files&&j.files.length>0){
+      driveFileId=j.files[0].id;
+      const fr=await fetch(`https://www.googleapis.com/drive/v3/files/${driveFileId}?alt=media`,{headers:{Authorization:'Bearer '+accessToken}});
+      const fd=await fr.json();
+      data=Object.assign({wo:[],quoted:[],parts:[],scheduled:[],callbacks:[],tasks:[],archive:[]},fd);
+      setSync('saved','Loaded from Drive');
+    }else{setSync('saved','New file — ready');}
+  }catch(e){setSync('error','Load failed');}
+  updateStats();updateTechFilters();renderWO();
+}
+async function saveToDrive(){
+  if(!accessToken)return;setSync('saving','Saving...');
+  try{
+    const body=JSON.stringify(data);
+    if(!driveFileId){
+      const m=await fetch('https://www.googleapis.com/drive/v3/files',{method:'POST',headers:{Authorization:'Bearer '+accessToken,'Content-Type':'application/json'},body:JSON.stringify({name:FILE_NAME,mimeType:'application/json'})});
+      driveFileId=(await m.json()).id;
     }
-  });
-  client.requestAccessToken();
+    await fetch(`https://www.googleapis.com/upload/drive/v3/files/${driveFileId}?uploadType=media`,{method:'PATCH',headers:{Authorization:'Bearer '+accessToken,'Content-Type':'application/json'},body});
+    setSync('saved','Saved ✓ '+new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}));
+  }catch(e){setSync('error','Save failed');}
+}
+function scheduleSave(){clearTimeout(saveTimeout);saveTimeout=setTimeout(saveToDrive,800);}
+function fmtDate(d){if(!d)return'—';const[y,m,day]=d.split('-');return`${m}/${day}/${y.slice(2)}`;}
+function isOverdue(d){if(!d)return false;return new Date(d)<new Date(new Date().toDateString());}
+function fmtCurrency(v){if(!v)return'—';return'$'+parseFloat(v).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0});}
+
+function badge(status){
+  const map={'In Progress':'badge-progress','Waiting on Parts':'badge-parts','Waiting on Customer':'badge-callback','Needs Follow-up':'badge-callback','Needs Quote':'badge-waiting','Approved - Awaiting Parts':'badge-approved','Scheduled':'badge-scheduled','On Hold':'badge-waiting','Open':'badge-open'};
+  return`<span class="badge ${map[status]||'badge-open'}">${status}</span>`;
 }
 
-function signOut() {
-  google.accounts.id.disableAutoSelect();
-  accessToken = null; driveFileId = null;
-  document.getElementById('auth-screen').style.display = 'flex';
-  document.getElementById('app').style.display = 'none';
-}
-
-function setSync(state, msg) {
-  const el = document.getElementById('sync-status');
-  el.className = 'sync-status ' + state;
-  el.textContent = msg;
-}
-
-async function loadFromDrive() {
-  setSync('saving', 'Loading...');
-  try {
-    const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=name='${FILE_NAME}'&spaces=drive&fields=files(id,name)`, {
-      headers: { Authorization: 'Bearer ' + accessToken }
-    });
-    const json = await res.json();
-    if (json.files && json.files.length > 0) {
-      driveFileId = json.files[0].id;
-      const fileRes = await fetch(`https://www.googleapis.com/drive/v3/files/${driveFileId}?alt=media`, {
-        headers: { Authorization: 'Bearer ' + accessToken }
-      });
-      const fileData = await fileRes.json();
-      data = Object.assign({wo:[],parts:[],scheduled:[],callbacks:[],tasks:[],archive:[]}, fileData);
-      setSync('saved', 'Loaded from Drive');
-    } else {
-      setSync('saved', 'New file — ready');
-    }
-  } catch(e) { setSync('error', 'Load failed'); }
-  updateStats();
-  updateTechFilters();
-  renderWO();
-}
-
-async function saveToDrive() {
-  if (!accessToken) return;
-  setSync('saving', 'Saving...');
-  try {
-    const body = JSON.stringify(data);
-    if (!driveFileId) {
-      const meta = await fetch('https://www.googleapis.com/drive/v3/files', {
-        method: 'POST',
-        headers: { Authorization: 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: FILE_NAME, mimeType: 'application/json' })
-      });
-      const metaJson = await meta.json();
-      driveFileId = metaJson.id;
-    }
-    await fetch(`https://www.googleapis.com/upload/drive/v3/files/${driveFileId}?uploadType=media`, {
-      method: 'PATCH',
-      headers: { Authorization: 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
-      body
-    });
-    setSync('saved', 'Saved ✓ ' + new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}));
-  } catch(e) { setSync('error', 'Save failed'); }
-}
-
-function scheduleSave() { clearTimeout(saveTimeout); saveTimeout = setTimeout(saveToDrive, 800); }
-function fmtDate(d) { if(!d) return '—'; const[y,m,day]=d.split('-'); return`${m}/${day}/${y.slice(2)}`; }
-function isOverdue(d) { if(!d) return false; return new Date(d) < new Date(new Date().toDateString()); }
-
-function badge(status) {
-  const map = {
-    'In Progress':'badge-progress','Waiting on Parts':'badge-parts',
-    'Waiting on Customer':'badge-callback','Needs Follow-up':'badge-callback',
-    'Needs Quote':'badge-waiting','Approved - Awaiting Parts':'badge-approved',
-    'Scheduled':'badge-scheduled','On Hold':'badge-waiting',
-    'Open':'badge-open','Won':'badge-open','Lost':'badge-parts','No Response':'badge-waiting'
-  };
-  return `<span class="badge ${map[status]||'badge-open'}">${status}</span>`;
-}
-
-function updateStats() {
-  document.getElementById('s-wo').textContent = data.wo.length;
-  document.getElementById('s-parts').textContent = data.parts.length;
-  document.getElementById('s-scheduled').textContent = data.scheduled.length;
-  document.getElementById('s-callbacks').textContent = data.callbacks.length;
-  document.getElementById('s-tasks').textContent = data.tasks.length;
+function updateStats(){
+  document.getElementById('s-wo').textContent=data.wo.length;
+  document.getElementById('s-quoted').textContent=data.quoted.length;
+  document.getElementById('s-parts').textContent=data.parts.length;
+  document.getElementById('s-scheduled').textContent=data.scheduled.length;
+  document.getElementById('s-callbacks').textContent=data.callbacks.length;
+  document.getElementById('s-tasks').textContent=data.tasks.length;
   updateOverdueBadges();
 }
-
-function updateOverdueBadges() {
-  const counts = {
-    wo: data.wo.filter(r => isOverdue(r.due)).length,
-    parts: data.parts.filter(r => isOverdue(r.eta)).length,
-    scheduled: data.scheduled.filter(r => isOverdue(r.date)).length,
-    callbacks: data.callbacks.filter(r => isOverdue(r.deadline)).length,
-    tasks: data.tasks.filter(r => isOverdue(r.due)).length
-  };
-  ['wo','parts','scheduled','callbacks','tasks'].forEach(t => {
-    const btn = document.getElementById('tabbtn-'+t);
-    const existing = btn.querySelector('.tab-badge');
-    if (existing) existing.remove();
-    if (counts[t] > 0) {
-      const badge = document.createElement('span');
-      badge.className = 'tab-badge';
-      badge.textContent = counts[t];
-      btn.appendChild(badge);
-    }
+function updateOverdueBadges(){
+  const counts={wo:data.wo.filter(r=>isOverdue(r.due)).length,quoted:data.quoted.filter(r=>isOverdue(r.date)).length,parts:data.parts.filter(r=>isOverdue(r.eta)).length,scheduled:data.scheduled.filter(r=>isOverdue(r.date)).length,callbacks:data.callbacks.filter(r=>isOverdue(r.deadline)).length,tasks:data.tasks.filter(r=>isOverdue(r.due)).length};
+  ['wo','quoted','parts','scheduled','callbacks','tasks'].forEach(t=>{
+    const btn=document.getElementById('tabbtn-'+t);
+    const ex=btn.querySelector('.tab-badge');if(ex)ex.remove();
+    if(counts[t]>0){const b=document.createElement('span');b.className='tab-badge';b.textContent=counts[t];btn.appendChild(b);}
   });
 }
-
-function getTechs() {
-  const techs = new Set();
-  ['wo','parts','scheduled','callbacks'].forEach(type => {
-    data[type].forEach(r => { if(r.tech) techs.add(r.tech); });
+function getTechs(){
+  const techs=new Set();
+  ['wo','quoted','parts','scheduled','callbacks'].forEach(type=>{
+    data[type].forEach(r=>{
+      if(r.tech)techs.add(r.tech);
+      if(r.techs&&Array.isArray(r.techs))r.techs.forEach(t=>{if(t)techs.add(t);});
+    });
   });
-  return [...techs].sort();
+  return[...techs].sort();
 }
-
-function updateTechFilters() {
-  const techs = getTechs();
-  ['wo','parts','scheduled','callbacks'].forEach(type => {
-    const sel = document.getElementById(type+'-tech-filter');
-    if (!sel) return;
-    const val = sel.value;
-    sel.innerHTML = '<option value="">All techs</option>' + techs.map(t => `<option${t===val?' selected':''}>${t}</option>`).join('');
+function updateTechFilters(){
+  const techs=getTechs();
+  ['wo','quoted','parts','scheduled','callbacks'].forEach(type=>{
+    const sel=document.getElementById(type+'-tech-filter');if(!sel)return;
+    const val=sel.value;
+    sel.innerHTML='<option value="">All techs</option>'+techs.map(t=>`<option${t===val?' selected':''}>${t}</option>`).join('');
   });
 }
-
-function switchTab(t) {
-  const tabs = ['wo','parts','scheduled','callbacks','tasks','archive'];
-  document.querySelectorAll('.tab').forEach((el,i) => el.classList.toggle('active', tabs[i]===t));
-  document.querySelectorAll('.section').forEach(el => el.classList.remove('active'));
+function switchTab(t){
+  const tabs=['wo','quoted','parts','scheduled','callbacks','tasks','archive'];
+  document.querySelectorAll('.tab').forEach((el,i)=>el.classList.toggle('active',tabs[i]===t));
+  document.querySelectorAll('.section').forEach(el=>el.classList.remove('active'));
   document.getElementById('tab-'+t).classList.add('active');
-  const renders = {wo:renderWO,parts:renderParts,scheduled:renderScheduled,callbacks:renderCallbacks,tasks:renderTasks,archive:renderArchive};
+  const renders={wo:renderWO,quoted:renderQuoted,parts:renderParts,scheduled:renderScheduled,callbacks:renderCallbacks,tasks:renderTasks,archive:renderArchive};
   renders[t]();
 }
+function renderEmpty(id){document.getElementById(id).innerHTML=`<tr><td colspan="10" class="empty">No items — click + to add</td></tr>`;}
 
-function showNotes(title, meta, notes) {
-  document.getElementById('notes-modal-content').innerHTML = `
-    <h3>${title}</h3>
-    <div class="meta">${meta}</div>
-    <p>${notes || 'No notes.'}</p>
-    <div class="modal-btns"><button class="btn-save" onclick="closeNotesModal()">Close</button></div>`;
-  document.getElementById('notes-modal-bg').classList.add('open');
-}
-function closeNotesModal() { document.getElementById('notes-modal-bg').classList.remove('open'); }
-
-function markDone(type, idx) {
-  const item = data[type][idx];
-  const labels = {
-    wo: r => `W/O #${r.wo_num} — ${r.tech}`,
-    parts: r => `${r.part} (W/O #${r.wo_num})`,
-    scheduled: r => `${r.customer} — W/O #${r.wo_num}`,
-    callbacks: r => `Callback: ${r.customer}`,
-    tasks: r => r.task
-  };
-  data.archive.unshift({type, label: labels[type](item), date: new Date().toISOString().split('T')[0], item});
-  data[type].splice(idx, 1);
-  updateStats(); updateTechFilters(); scheduleSave(); switchTab(type);
+function renderWO(){
+  const q=(document.getElementById('wo-search').value||'').toLowerCase();
+  const f=document.getElementById('wo-filter').value;
+  const tech=document.getElementById('wo-tech-filter').value;
+  const rows=data.wo.filter(r=>(!q||(r.wo_num+r.tech+(r.notes||'')+r.type).toLowerCase().includes(q))&&(!f||r.status===f)&&(!tech||r.tech===tech));
+  const tbody=document.getElementById('wo-body');
+  if(!rows.length){renderEmpty('wo-body');return;}
+  tbody.innerHTML=rows.map(r=>{const i=data.wo.indexOf(r);return`<tr>
+    <td style="font-weight:500">${r.wo_num||'—'}</td><td>${r.tech||'—'}</td><td>${r.type||'—'}</td>
+    <td>${badge(r.status)}</td><td class="${isOverdue(r.due)?'overdue':''}">${fmtDate(r.due)}</td>
+    <td class="notes-cell" title="${(r.notes||'').replace(/"/g,'&quot;')}">${r.notes||'—'}</td>
+    <td><div class="action-btns"><button class="btn-edit" onclick="openModal('wo',${i})">Edit</button><button class="btn-done" onclick="markDone('wo',${i})">Done</button><button class="btn-del" onclick="delItem('wo',${i})">✕</button></div></td>
+  </tr>`;}).join('');
 }
 
-function delItem(type, idx) { data[type].splice(idx,1); updateStats(); updateTechFilters(); scheduleSave(); switchTab(type); }
-function delArchive(idx) { data.archive.splice(idx,1); scheduleSave(); renderArchive(); }
-function renderEmpty(id) { document.getElementById(id).innerHTML = `<tr><td colspan="10" class="empty">No items — click + to add</td></tr>`; }
-
-function renderWO() {
-  const q = (document.getElementById('wo-search').value||'').toLowerCase();
-  const f = document.getElementById('wo-filter').value;
-  const tech = document.getElementById('wo-tech-filter').value;
-  const rows = data.wo.filter(r =>
-    (!q||(r.wo_num+r.tech+r.notes+r.type).toLowerCase().includes(q)) &&
-    (!f||r.status===f) && (!tech||r.tech===tech));
-  const tbody = document.getElementById('wo-body');
-  if (!rows.length) { renderEmpty('wo-body'); return; }
-  tbody.innerHTML = rows.map(r => {
-    const i = data.wo.indexOf(r);
-    return `<tr>
-      <td style="font-weight:500">${r.wo_num||'—'}</td>
-      <td>${r.tech||'—'}</td>
-      <td>${r.type||'—'}</td>
-      <td>${badge(r.status)}</td>
-      <td class="${isOverdue(r.due)?'overdue':''}">${fmtDate(r.due)}</td>
-      <td class="notes-cell" onclick="showNotes('W/O #${r.wo_num}','${r.tech} — ${r.type} — ${r.status}','${(r.notes||'').replace(/'/g,"&#39;")}')">${r.notes||'—'}</td>
-      <td><div class="action-btns">
-        <button class="btn-edit" onclick="openModal('wo',${i})">Edit</button>
-        <button class="btn-done" onclick="markDone('wo',${i})">Done</button>
-        <button class="btn-del" onclick="delItem('wo',${i})">✕</button>
-      </div></td>
-    </tr>`;
-  }).join('');
+function renderQuoted(){
+  const q=(document.getElementById('quoted-search').value||'').toLowerCase();
+  const f=document.getElementById('quoted-status-filter').value;
+  const tech=document.getElementById('quoted-tech-filter').value;
+  const rows=data.quoted.filter(r=>{
+    const techMatch=!tech||(r.techs&&r.techs.includes(tech));
+    const textMatch=!q||(r.wo_num+(r.techs||[]).join(' ')+(r.customer||'')).toLowerCase().includes(q);
+    return textMatch&&(!f||r.status===f)&&techMatch;
+  });
+  const tbody=document.getElementById('quoted-body');
+  if(!rows.length){renderEmpty('quoted-body');return;}
+  tbody.innerHTML=rows.map(r=>{const i=data.quoted.indexOf(r);
+    const techDisplay=(r.techs&&r.techs.filter(Boolean).length>0)?r.techs.filter(Boolean).join(', '):'—';
+    return`<tr>
+      <td style="font-weight:500">${r.wo_num||'—'}</td><td title="${techDisplay}">${techDisplay.length>15?techDisplay.slice(0,15)+'…':techDisplay}</td>
+      <td>${r.customer||'—'}</td><td>${r.type||'—'}</td>
+      <td>${r.hrs_quoted||'—'}</td><td>${fmtCurrency(r.cost_quoted)}</td>
+      <td>${badge(r.status)}</td><td class="${isOverdue(r.date)?'overdue':''}">${fmtDate(r.date)}</td>
+      <td><div class="action-btns"><button class="btn-edit" onclick="openModal('quoted',${i})">Edit</button><button class="btn-done" onclick="completeQuoted(${i})">Done</button><button class="btn-del" onclick="delItem('quoted',${i})">✕</button></div></td>
+    </tr>`;}).join('');
 }
 
-function renderParts() {
-  const q = (document.getElementById('parts-search').value||'').toLowerCase();
-  const tech = document.getElementById('parts-tech-filter').value;
-  const rows = data.parts.filter(r => (!q||(r.wo_num+r.tech+r.part+r.supplier).toLowerCase().includes(q)) && (!tech||r.tech===tech));
-  const tbody = document.getElementById('parts-body');
-  if (!rows.length) { renderEmpty('parts-body'); return; }
-  tbody.innerHTML = rows.map(r => {
-    const i = data.parts.indexOf(r);
-    return `<tr>
-      <td style="font-weight:500">${r.wo_num||'—'}</td>
-      <td>${r.tech||'—'}</td>
-      <td>${r.part||'—'}</td>
-      <td>${r.supplier||'—'}</td>
-      <td>${fmtDate(r.ordered)}</td>
-      <td class="${isOverdue(r.eta)?'overdue':''}">${fmtDate(r.eta)}</td>
-      <td><div class="action-btns">
-        <button class="btn-edit" onclick="openModal('parts',${i})">Edit</button>
-        <button class="btn-done" onclick="markDone('parts',${i})">In</button>
-        <button class="btn-del" onclick="delItem('parts',${i})">✕</button>
-      </div></td>
-    </tr>`;
-  }).join('');
+function renderParts(){
+  const q=(document.getElementById('parts-search').value||'').toLowerCase();
+  const tech=document.getElementById('parts-tech-filter').value;
+  const rows=data.parts.filter(r=>(!q||(r.wo_num+r.tech+r.part+(r.supplier||'')).toLowerCase().includes(q))&&(!tech||r.tech===tech));
+  const tbody=document.getElementById('parts-body');
+  if(!rows.length){renderEmpty('parts-body');return;}
+  tbody.innerHTML=rows.map(r=>{const i=data.parts.indexOf(r);return`<tr>
+    <td style="font-weight:500">${r.wo_num||'—'}</td><td>${r.tech||'—'}</td><td>${r.part||'—'}</td>
+    <td>${r.supplier||'—'}</td><td>${fmtDate(r.ordered)}</td><td class="${isOverdue(r.eta)?'overdue':''}">${fmtDate(r.eta)}</td>
+    <td><div class="action-btns"><button class="btn-edit" onclick="openModal('parts',${i})">Edit</button><button class="btn-done" onclick="markDone('parts',${i})">In</button><button class="btn-del" onclick="delItem('parts',${i})">✕</button></div></td>
+  </tr>`;}).join('');
 }
 
-function renderScheduled() {
-  const q = (document.getElementById('scheduled-search').value||'').toLowerCase();
-  const f = document.getElementById('scheduled-filter').value;
-  const tech = document.getElementById('scheduled-tech-filter').value;
-  const rows = data.scheduled.filter(r =>
-    (!q||(r.wo_num+r.tech+r.customer+r.notes).toLowerCase().includes(q)) &&
-    (!f||r.status===f) && (!tech||r.tech===tech));
-  const tbody = document.getElementById('scheduled-body');
-  if (!rows.length) { renderEmpty('scheduled-body'); return; }
-  tbody.innerHTML = rows.map(r => {
-    const i = data.scheduled.indexOf(r);
-    return `<tr>
-      <td style="font-weight:500">${r.wo_num||'—'}</td>
-      <td>${r.tech||'—'}</td>
-      <td>${r.customer||'—'}</td>
-      <td>${r.type||'—'}</td>
-      <td>${badge(r.status)}</td>
-      <td class="${isOverdue(r.date)?'overdue':''}">${fmtDate(r.date)}</td>
-      <td class="notes-cell" onclick="showNotes('W/O #${r.wo_num} — ${r.customer||''}','${r.tech} — ${r.status}','${(r.notes||'').replace(/'/g,"&#39;")}')">${r.notes||'—'}</td>
-      <td><div class="action-btns">
-        <button class="btn-edit" onclick="openModal('scheduled',${i})">Edit</button>
-        <button class="btn-done" onclick="markDone('scheduled',${i})">Done</button>
-        <button class="btn-del" onclick="delItem('scheduled',${i})">✕</button>
-      </div></td>
-    </tr>`;
-  }).join('');
+function renderScheduled(){
+  const q=(document.getElementById('scheduled-search').value||'').toLowerCase();
+  const f=document.getElementById('scheduled-filter').value;
+  const tech=document.getElementById('scheduled-tech-filter').value;
+  const rows=data.scheduled.filter(r=>(!q||(r.wo_num+r.tech+(r.customer||'')+(r.notes||'')).toLowerCase().includes(q))&&(!f||r.status===f)&&(!tech||r.tech===tech));
+  const tbody=document.getElementById('scheduled-body');
+  if(!rows.length){renderEmpty('scheduled-body');return;}
+  tbody.innerHTML=rows.map(r=>{const i=data.scheduled.indexOf(r);return`<tr>
+    <td style="font-weight:500">${r.wo_num||'—'}</td><td>${r.tech||'—'}</td><td>${r.customer||'—'}</td>
+    <td>${r.type||'—'}</td><td>${badge(r.status)}</td><td class="${isOverdue(r.date)?'overdue':''}">${fmtDate(r.date)}</td>
+    <td class="notes-cell" title="${(r.notes||'').replace(/"/g,'&quot;')}">${r.notes||'—'}</td>
+    <td><div class="action-btns"><button class="btn-edit" onclick="openModal('scheduled',${i})">Edit</button><button class="btn-done" onclick="markDone('scheduled',${i})">Done</button><button class="btn-del" onclick="delItem('scheduled',${i})">✕</button></div></td>
+  </tr>`;}).join('');
 }
 
-function renderCallbacks() {
-  const q = (document.getElementById('callbacks-search').value||'').toLowerCase();
-  const tech = document.getElementById('callbacks-tech-filter').value;
-  const rows = data.callbacks.filter(r => (!q||(r.customer+r.tech+r.reason).toLowerCase().includes(q)) && (!tech||r.tech===tech));
-  const tbody = document.getElementById('callbacks-body');
-  if (!rows.length) { renderEmpty('callbacks-body'); return; }
-  tbody.innerHTML = rows.map(r => {
-    const i = data.callbacks.indexOf(r);
-    return `<tr>
-      <td>${r.customer||'—'}</td>
-      <td>${r.tech||'—'}</td>
-      <td class="notes-cell" onclick="showNotes('Callback: ${r.customer||''}','Tech: ${r.tech} — Flagged: ${fmtDate(r.flagged)}','${(r.reason||'').replace(/'/g,"&#39;")}')">${r.reason||'—'}</td>
-      <td>${fmtDate(r.flagged)}</td>
-      <td class="${isOverdue(r.deadline)?'overdue':''}">${fmtDate(r.deadline)}</td>
-      <td><div class="action-btns">
-        <button class="btn-edit" onclick="openModal('callbacks',${i})">Edit</button>
-        <button class="btn-done" onclick="markDone('callbacks',${i})">Done</button>
-        <button class="btn-del" onclick="delItem('callbacks',${i})">✕</button>
-      </div></td>
-    </tr>`;
-  }).join('');
+function renderCallbacks(){
+  const q=(document.getElementById('callbacks-search').value||'').toLowerCase();
+  const tech=document.getElementById('callbacks-tech-filter').value;
+  const rows=data.callbacks.filter(r=>(!q||(r.customer+r.tech+(r.reason||'')).toLowerCase().includes(q))&&(!tech||r.tech===tech));
+  const tbody=document.getElementById('callbacks-body');
+  if(!rows.length){renderEmpty('callbacks-body');return;}
+  tbody.innerHTML=rows.map(r=>{const i=data.callbacks.indexOf(r);return`<tr>
+    <td>${r.customer||'—'}</td><td>${r.tech||'—'}</td>
+    <td class="notes-cell" title="${(r.reason||'').replace(/"/g,'&quot;')}">${r.reason||'—'}</td>
+    <td>${fmtDate(r.flagged)}</td><td class="${isOverdue(r.deadline)?'overdue':''}">${fmtDate(r.deadline)}</td>
+    <td><div class="action-btns"><button class="btn-edit" onclick="openModal('callbacks',${i})">Edit</button><button class="btn-done" onclick="markDone('callbacks',${i})">Done</button><button class="btn-del" onclick="delItem('callbacks',${i})">✕</button></div></td>
+  </tr>`;}).join('');
 }
 
-function renderTasks() {
-  const q = (document.getElementById('tasks-search').value||'').toLowerCase();
-  const rows = data.tasks.filter(r => !q||(r.task+r.category+r.notes).toLowerCase().includes(q));
-  const tbody = document.getElementById('tasks-body');
-  if (!rows.length) { renderEmpty('tasks-body'); return; }
-  tbody.innerHTML = rows.map(r => {
-    const i = data.tasks.indexOf(r);
-    return `<tr>
-      <td style="font-weight:500">${r.task||'—'}</td>
-      <td>${r.category||'—'}</td>
-      <td class="${isOverdue(r.due)?'overdue':''}">${fmtDate(r.due)}</td>
-      <td class="notes-cell" onclick="showNotes('${(r.task||'').replace(/'/g,"&#39;")}','Category: ${r.category}','${(r.notes||'').replace(/'/g,"&#39;")}')">${r.notes||'—'}</td>
-      <td><div class="action-btns">
-        <button class="btn-edit" onclick="openModal('tasks',${i})">Edit</button>
-        <button class="btn-done" onclick="markDone('tasks',${i})">Done</button>
-        <button class="btn-del" onclick="delItem('tasks',${i})">✕</button>
-      </div></td>
-    </tr>`;
-  }).join('');
+function renderTasks(){
+  const q=(document.getElementById('tasks-search').value||'').toLowerCase();
+  const rows=data.tasks.filter(r=>!q||(r.task+(r.category||'')+(r.notes||'')).toLowerCase().includes(q));
+  const tbody=document.getElementById('tasks-body');
+  if(!rows.length){renderEmpty('tasks-body');return;}
+  tbody.innerHTML=rows.map(r=>{const i=data.tasks.indexOf(r);return`<tr>
+    <td style="font-weight:500">${r.task||'—'}</td><td>${r.category||'—'}</td>
+    <td class="${isOverdue(r.due)?'overdue':''}">${fmtDate(r.due)}</td>
+    <td class="notes-cell" title="${(r.notes||'').replace(/"/g,'&quot;')}">${r.notes||'—'}</td>
+    <td><div class="action-btns"><button class="btn-edit" onclick="openModal('tasks',${i})">Edit</button><button class="btn-done" onclick="markDone('tasks',${i})">Done</button><button class="btn-del" onclick="delItem('tasks',${i})">✕</button></div></td>
+  </tr>`;}).join('');
 }
 
-function renderArchive() {
-  const tbody = document.getElementById('archive-body');
-  if (!data.archive.length) { renderEmpty('archive-body'); return; }
-  tbody.innerHTML = data.archive.map((r,i) => `<tr>
-    <td><span class="badge badge-open">${r.type}</span></td>
-    <td>${r.label}</td>
-    <td>${fmtDate(r.date)}</td>
-    <td><button class="btn-del" onclick="delArchive(${i})">✕</button></td>
+function renderArchive(){
+  const tbody=document.getElementById('archive-body');
+  if(!data.archive.length){renderEmpty('archive-body');return;}
+  tbody.innerHTML=data.archive.map((r,i)=>`<tr>
+    <td><span class="badge badge-open">${r.type}</span></td><td>${r.label}</td>
+    <td>${fmtDate(r.date)}</td><td><button class="btn-del" onclick="delArchive(${i})">✕</button></td>
   </tr>`).join('');
 }
 
-function getModalHTML(type, item) {
-  const v = (field, def='') => item ? (item[field]||def) : def;
-  const sel = (field, opts, def='') => opts.map(o => `<option${(item?item[field]:def)===o?' selected':''}>${o}</option>`).join('');
-  if (type==='wo') return `<h3>${item?'Edit':'Add'} Work Order</h3>
+function getModalHTML(type,item){
+  const v=(f,d='')=>item?(item[f]||d):d;
+  const sel=(f,opts)=>opts.map(o=>`<option${(item?item[f]:'')===o?' selected':''}>${o}</option>`).join('');
+  if(type==='wo')return`<h3>${item?'Edit':'Add'} Work Order</h3>
     <div class="form-grid">
       <div class="form-row"><label>W/O Number</label><input id="f-wo_num" value="${v('wo_num')}" placeholder="e.g. 10432"></div>
       <div class="form-row"><label>Tech Name</label><input id="f-tech" value="${v('tech')}" placeholder="e.g. Mike"></div>
       <div class="form-row"><label>Job Type</label><select id="f-type">${sel('type',['Service','PM','Install'])}</select></div>
-      <div class="form-row"><label>Status</label><select id="f-status">${sel('status',['In Progress','Waiting on Parts','Waiting on Customer','Needs Follow-up','Needs Quote','Approved - Awaiting Parts'])}</select></div>
+      <div class="form-row"><label>Status</label><select id="f-status">${sel('status',['In Progress','Waiting on Parts','Waiting on Customer','Needs Follow-up','Needs Quote'])}</select></div>
       <div class="form-row"><label>Expected Close</label><input type="date" id="f-due" value="${v('due')}"></div>
     </div>
     <div class="form-row"><label>Notes</label><textarea id="f-notes">${v('notes')}</textarea></div>
     <div class="modal-btns"><button class="btn-cancel" onclick="closeModal()">Cancel</button><button class="btn-save" onclick="saveItem('wo')">${item?'Save':'Add'}</button></div>`;
-  if (type==='parts') return `<h3>${item?'Edit':'Add'} Parts Order</h3>
+
+  if(type==='quoted'){
+    const techs=item&&item.techs?item.techs:[''];
+    const techInputs=techs.map((t,i)=>`<div class="tech-entry" id="tech-entry-${i}"><input value="${t}" placeholder="Tech name" class="tech-input"><button type="button" class="btn-remove-tech" onclick="removeTech(${i})">✕</button></div>`).join('');
+    return`<h3>${item?'Edit':'Add'} Quoted Job</h3>
+    <div class="form-grid">
+      <div class="form-row"><label>W/O Number</label><input id="f-wo_num" value="${v('wo_num')}" placeholder="e.g. 10432"></div>
+      <div class="form-row"><label>Customer / Site</label><input id="f-customer" value="${v('customer')}" placeholder="e.g. LRCC Cat"></div>
+      <div class="form-row"><label>Job Type</label><select id="f-type">${sel('type',['Service','PM','Install'])}</select></div>
+      <div class="form-row"><label>Status</label><select id="f-status">${sel('status',['Scheduled','In Progress','Approved - Awaiting Parts','On Hold'])}</select></div>
+      <div class="form-row"><label>Hrs Quoted</label><input id="f-hrs_quoted" type="number" step="0.5" value="${v('hrs_quoted')}" placeholder="e.g. 8"></div>
+      <div class="form-row"><label>Cost Quoted ($)</label><input id="f-cost_quoted" type="number" value="${v('cost_quoted')}" placeholder="e.g. 4200"></div>
+      <div class="form-row"><label>Scheduled Date</label><input type="date" id="f-date" value="${v('date')}"></div>
+    </div>
+    <div class="form-row"><label>Tech(s)</label><div class="tech-list" id="tech-list">${techInputs}</div><button type="button" class="btn-add-tech" onclick="addTech()">+ Add tech</button></div>
+    <div class="form-row"><label>Notes</label><textarea id="f-notes">${v('notes')}</textarea></div>
+    <div class="modal-btns"><button class="btn-cancel" onclick="closeModal()">Cancel</button><button class="btn-save" onclick="saveItem('quoted')">${item?'Save':'Add'}</button></div>`;
+  }
+
+  if(type==='parts')return`<h3>${item?'Edit':'Add'} Parts Order</h3>
     <div class="form-grid">
       <div class="form-row"><label>W/O Number</label><input id="f-wo_num" value="${v('wo_num')}" placeholder="e.g. 10432"></div>
       <div class="form-row"><label>Tech Name</label><input id="f-tech" value="${v('tech')}" placeholder="e.g. Mike"></div>
@@ -613,7 +503,8 @@ function getModalHTML(type, item) {
       <div class="form-row"><label>ETA</label><input type="date" id="f-eta" value="${v('eta')}"></div>
     </div>
     <div class="modal-btns"><button class="btn-cancel" onclick="closeModal()">Cancel</button><button class="btn-save" onclick="saveItem('parts')">${item?'Save':'Add'}</button></div>`;
-  if (type==='scheduled') return `<h3>${item?'Edit':'Add'} Scheduled Job</h3>
+
+  if(type==='scheduled')return`<h3>${item?'Edit':'Add'} Scheduled Job</h3>
     <div class="form-grid">
       <div class="form-row"><label>W/O Number</label><input id="f-wo_num" value="${v('wo_num')}" placeholder="e.g. 10432"></div>
       <div class="form-row"><label>Tech</label><input id="f-tech" value="${v('tech')}" placeholder="e.g. Dave"></div>
@@ -624,7 +515,8 @@ function getModalHTML(type, item) {
     </div>
     <div class="form-row"><label>Notes</label><textarea id="f-notes">${v('notes')}</textarea></div>
     <div class="modal-btns"><button class="btn-cancel" onclick="closeModal()">Cancel</button><button class="btn-save" onclick="saveItem('scheduled')">${item?'Save':'Add'}</button></div>`;
-  if (type==='callbacks') return `<h3>${item?'Edit':'Add'} Callback</h3>
+
+  if(type==='callbacks')return`<h3>${item?'Edit':'Add'} Callback</h3>
     <div class="form-grid">
       <div class="form-row"><label>Customer</label><input id="f-customer" value="${v('customer')}" placeholder="Customer name"></div>
       <div class="form-row"><label>Tech</label><input id="f-tech" value="${v('tech')}" placeholder="Tech assigned"></div>
@@ -633,7 +525,8 @@ function getModalHTML(type, item) {
     </div>
     <div class="form-row"><label>Reason</label><textarea id="f-reason">${v('reason')}</textarea></div>
     <div class="modal-btns"><button class="btn-cancel" onclick="closeModal()">Cancel</button><button class="btn-save" onclick="saveItem('callbacks')">${item?'Save':'Add'}</button></div>`;
-  if (type==='tasks') return `<h3>${item?'Edit':'Add'} Task</h3>
+
+  if(type==='tasks')return`<h3>${item?'Edit':'Add'} Task</h3>
     <div class="form-grid">
       <div class="form-row"><label>Task</label><input id="f-task" value="${v('task')}" placeholder="What needs to get done"></div>
       <div class="form-row"><label>Category</label><select id="f-category">${sel('category',['Admin','Meeting','Customer','HR','Equipment','Other'])}</select></div>
@@ -643,30 +536,266 @@ function getModalHTML(type, item) {
     <div class="modal-btns"><button class="btn-cancel" onclick="closeModal()">Cancel</button><button class="btn-save" onclick="saveItem('tasks')">${item?'Save':'Add'}</button></div>`;
 }
 
-function openModal(type, idx) {
-  editingType = type;
-  editingIndex = idx;
-  const item = idx !== null ? data[type][idx] : null;
-  document.getElementById('modal-content').innerHTML = getModalHTML(type, item);
+function addTech(){
+  const list=document.getElementById('tech-list');
+  const idx=list.children.length;
+  const div=document.createElement('div');div.className='tech-entry';div.id='tech-entry-'+idx;
+  div.innerHTML=`<input value="" placeholder="Tech name" class="tech-input"><button type="button" class="btn-remove-tech" onclick="removeTech(${idx})">✕</button>`;
+  list.appendChild(div);
+}
+function removeTech(idx){const el=document.getElementById('tech-entry-'+idx);if(el)el.remove();}
+function getTechs_inputs(){return[...document.querySelectorAll('.tech-input')].map(i=>i.value.trim()).filter(Boolean);}
+
+function openModal(type,idx){
+  editingType=type;editingIndex=idx;
+  const item=idx!==null?data[type][idx]:null;
+  document.getElementById('modal-content').innerHTML=getModalHTML(type,item);
   document.getElementById('modal-bg').classList.add('open');
 }
-function closeModal() { document.getElementById('modal-bg').classList.remove('open'); editingIndex=null; editingType=null; }
-function g(id) { const el=document.getElementById(id); return el?el.value.trim():''; }
+function closeModal(){document.getElementById('modal-bg').classList.remove('open');editingIndex=null;editingType=null;}
+function g(id){const el=document.getElementById(id);return el?el.value.trim():'';}
 
-function saveItem(type) {
-  let item = {};
-  if (type==='wo') item={wo_num:g('f-wo_num'),tech:g('f-tech'),type:g('f-type'),status:g('f-status'),due:g('f-due'),notes:g('f-notes')};
-  else if (type==='parts') item={wo_num:g('f-wo_num'),tech:g('f-tech'),part:g('f-part'),supplier:g('f-supplier'),ordered:g('f-ordered'),eta:g('f-eta')};
-  else if (type==='scheduled') item={wo_num:g('f-wo_num'),tech:g('f-tech'),customer:g('f-customer'),type:g('f-type'),status:g('f-status'),date:g('f-date'),notes:g('f-notes')};
-  else if (type==='callbacks') item={customer:g('f-customer'),tech:g('f-tech'),flagged:g('f-flagged'),deadline:g('f-deadline'),reason:g('f-reason')};
-  else if (type==='tasks') item={task:g('f-task'),category:g('f-category'),due:g('f-due'),notes:g('f-notes')};
-  if (editingIndex !== null) { data[type][editingIndex] = item; }
-  else { data[type].push(item); }
-  updateStats(); updateTechFilters(); scheduleSave(); closeModal(); switchTab(type);
+function saveItem(type){
+  let item={};
+  if(type==='wo') item={wo_num:g('f-wo_num'),tech:g('f-tech'),type:g('f-type'),status:g('f-status'),due:g('f-due'),notes:g('f-notes')};
+  else if(type==='quoted') item={wo_num:g('f-wo_num'),customer:g('f-customer'),type:g('f-type'),status:g('f-status'),hrs_quoted:g('f-hrs_quoted'),cost_quoted:g('f-cost_quoted'),date:g('f-date'),techs:getTechs_inputs(),notes:g('f-notes')};
+  else if(type==='parts') item={wo_num:g('f-wo_num'),tech:g('f-tech'),part:g('f-part'),supplier:g('f-supplier'),ordered:g('f-ordered'),eta:g('f-eta')};
+  else if(type==='scheduled') item={wo_num:g('f-wo_num'),tech:g('f-tech'),customer:g('f-customer'),type:g('f-type'),status:g('f-status'),date:g('f-date'),notes:g('f-notes')};
+  else if(type==='callbacks') item={customer:g('f-customer'),tech:g('f-tech'),flagged:g('f-flagged'),deadline:g('f-deadline'),reason:g('f-reason')};
+  else if(type==='tasks') item={task:g('f-task'),category:g('f-category'),due:g('f-due'),notes:g('f-notes')};
+  if(editingIndex!==null)data[type][editingIndex]=item;
+  else data[type].push(item);
+  updateStats();updateTechFilters();scheduleSave();closeModal();switchTab(type);
 }
 
-document.getElementById('modal-bg').addEventListener('click', function(e) { if(e.target===this) closeModal(); });
-document.getElementById('notes-modal-bg').addEventListener('click', function(e) { if(e.target===this) closeNotesModal(); });
+function completeQuoted(idx){
+  const job=data.quoted[idx];
+  document.getElementById('completion-modal-content').innerHTML=`
+    <h3>Complete Quoted Job — W/O #${job.wo_num}</h3>
+    <div class="completion-section">
+      <h4>Quote Summary</h4>
+      <div class="form-grid">
+        <div><div style="font-size:11px;color:#666;margin-bottom:2px">Hrs Quoted</div><div style="font-weight:500">${job.hrs_quoted||'—'}</div></div>
+        <div><div style="font-size:11px;color:#666;margin-bottom:2px">Cost Quoted</div><div style="font-weight:500">${fmtCurrency(job.cost_quoted)}</div></div>
+      </div>
+    </div>
+    <div class="form-grid">
+      <div class="form-row"><label>Actual Hrs</label><input id="c-hrs_actual" type="number" step="0.5" placeholder="e.g. 9.5" oninput="updateVariance()"></div>
+      <div class="form-row"><label>Actual Cost ($)</label><input id="c-cost_actual" type="number" placeholder="e.g. 4800" oninput="updateVariance()"></div>
+    </div>
+    <div id="variance-display"></div>
+    <div class="form-row" id="reason-row" style="display:none">
+      <label>Reason Over Quote</label>
+      <select id="c-reason">
+        <option value="">Select reason...</option>
+        <option>Sales missed item on quote</option>
+        <option>Tech did not have stock</option>
+        <option>Lack of knowledge on task</option>
+        <option>Late site access</option>
+        <option>Unforeseen site conditions</option>
+        <option>Customer added scope</option>
+        <option>Other</option>
+      </select>
+    </div>
+    <div class="form-row"><label>Completion Notes</label><textarea id="c-notes" placeholder="Any final notes..."></textarea></div>
+    <div class="modal-btns"><button class="btn-cancel" onclick="closeCompletionModal()">Cancel</button><button class="btn-save" onclick="finalizeQuoted(${idx})">Complete Job</button></div>`;
+  document.getElementById('completion-modal-bg').classList.add('open');
+}
+
+function updateVariance(){
+  const job=data.quoted[editingIndex!==null?editingIndex:0];
+  const hrsQ=parseFloat(document.querySelector('#completion-modal-content input[id="c-hrs_actual"]')?.closest('.form-grid')?.previousElementSibling?.querySelector('div:nth-child(1) div:nth-child(2)')?.textContent)||0;
+  const hrsA=parseFloat(document.getElementById('c-hrs_actual')?.value)||0;
+  const costQ=parseFloat(document.getElementById('completion-modal-content')?.querySelector('.completion-section .form-grid div:nth-child(2) div:nth-child(2)')?.textContent?.replace(/[$,]/g,''))||0;
+  const costA=parseFloat(document.getElementById('c-cost_actual')?.value)||0;
+
+  const quotedJob=getCurrentCompletingJob();
+  if(!quotedJob)return;
+  const qHrs=parseFloat(quotedJob.hrs_quoted)||0;
+  const qCost=parseFloat(quotedJob.cost_quoted)||0;
+  const aHrs=parseFloat(document.getElementById('c-hrs_actual')?.value)||0;
+  const aCost=parseFloat(document.getElementById('c-cost_actual')?.value)||0;
+
+  let html='';let showReason=false;
+  if(aHrs>0||aCost>0){
+    const hrsDiff=aHrs-qHrs;const costDiff=aCost-qCost;
+    const over=hrsDiff>0||costDiff>0;const under=hrsDiff<0&&costDiff<0;
+    const cls=over?'variance-over':under?'variance-under':'variance-even';
+    const label=over?'OVER QUOTE':under?'UNDER QUOTE':'ON BUDGET';
+    html=`<div class="variance-display ${cls}">${label} — Hrs: ${hrsDiff>0?'+':''}${hrsDiff.toFixed(1)} | Cost: ${costDiff>0?'+':''}${fmtCurrency(Math.abs(costDiff))} ${costDiff>=0?'over':'under'}</div>`;
+    if(over)showReason=true;
+  }
+  document.getElementById('variance-display').innerHTML=html;
+  document.getElementById('reason-row').style.display=showReason?'block':'none';
+}
+
+let currentCompletingIdx=null;
+function completeQuoted(idx){
+  currentCompletingIdx=idx;
+  const job=data.quoted[idx];
+  document.getElementById('completion-modal-content').innerHTML=`
+    <h3>Complete Quoted Job — W/O #${job.wo_num||''}</h3>
+    <div class="completion-section"><h4>Quote Summary</h4>
+      <div style="display:flex;gap:24px;font-size:13px">
+        <div><div style="color:#666;margin-bottom:2px;font-size:11px">Hrs Quoted</div><div style="font-weight:500">${job.hrs_quoted||'—'}</div></div>
+        <div><div style="color:#666;margin-bottom:2px;font-size:11px">Cost Quoted</div><div style="font-weight:500">${fmtCurrency(job.cost_quoted)}</div></div>
+        <div><div style="color:#666;margin-bottom:2px;font-size:11px">Techs</div><div style="font-weight:500">${(job.techs||[]).filter(Boolean).join(', ')||'—'}</div></div>
+      </div>
+    </div>
+    <div class="form-grid">
+      <div class="form-row"><label>Actual Hrs</label><input id="c-hrs_actual" type="number" step="0.5" placeholder="e.g. 9.5" oninput="calcVariance()"></div>
+      <div class="form-row"><label>Actual Cost ($)</label><input id="c-cost_actual" type="number" placeholder="e.g. 4800" oninput="calcVariance()"></div>
+    </div>
+    <div id="variance-display" style="margin-bottom:12px"></div>
+    <div class="form-row" id="reason-row" style="display:none"><label>Reason Over Quote</label>
+      <select id="c-reason">
+        <option value="">Select reason...</option>
+        <option>Sales missed item on quote</option><option>Tech did not have stock</option>
+        <option>Lack of knowledge on task</option><option>Late site access</option>
+        <option>Unforeseen site conditions</option><option>Customer added scope</option><option>Other</option>
+      </select>
+    </div>
+    <div class="form-row"><label>Completion Notes</label><textarea id="c-notes" placeholder="Any final notes..."></textarea></div>
+    <div class="modal-btns"><button class="btn-cancel" onclick="closeCompletionModal()">Cancel</button><button class="btn-save" onclick="finalizeQuoted()">Complete Job</button></div>`;
+  document.getElementById('completion-modal-bg').classList.add('open');
+}
+
+function getCurrentCompletingJob(){return currentCompletingIdx!==null?data.quoted[currentCompletingIdx]:null;}
+
+function calcVariance(){
+  const job=getCurrentCompletingJob();if(!job)return;
+  const qHrs=parseFloat(job.hrs_quoted)||0;
+  const qCost=parseFloat(job.cost_quoted)||0;
+  const aHrs=parseFloat(document.getElementById('c-hrs_actual')?.value)||0;
+  const aCost=parseFloat(document.getElementById('c-cost_actual')?.value)||0;
+  let html='';let showReason=false;
+  if(aHrs>0||aCost>0){
+    const hrsDiff=aHrs-qHrs;const costDiff=aCost-qCost;
+    const over=hrsDiff>0.05||costDiff>0.5;
+    const under=hrsDiff<-0.05&&costDiff<-0.5;
+    const cls=over?'variance-over':under?'variance-under':'variance-even';
+    const label=over?'OVER QUOTE':under?'UNDER QUOTE':'ON BUDGET';
+    const hrsStr=hrsDiff===0?'±0':(hrsDiff>0?'+':'')+hrsDiff.toFixed(1)+' hrs';
+    const costAbs=Math.abs(costDiff);const costStr=(costDiff>=0?'+':'-')+'$'+costAbs.toLocaleString('en-US',{maximumFractionDigits:0});
+    html=`<div class="variance-display ${cls}">${label} &nbsp;|&nbsp; Hrs: ${hrsStr} &nbsp;|&nbsp; Cost: ${costStr}</div>`;
+    if(over)showReason=true;
+  }
+  document.getElementById('variance-display').innerHTML=html;
+  document.getElementById('reason-row').style.display=showReason?'block':'none';
+}
+
+function finalizeQuoted(){
+  const job=getCurrentCompletingJob();if(!job)return;
+  const aHrs=parseFloat(document.getElementById('c-hrs_actual')?.value)||null;
+  const aCost=parseFloat(document.getElementById('c-cost_actual')?.value)||null;
+  const reason=document.getElementById('c-reason')?.value||'';
+  const notes=document.getElementById('c-notes')?.value||'';
+  const qHrs=parseFloat(job.hrs_quoted)||0;
+  const qCost=parseFloat(job.cost_quoted)||0;
+  const hrsDiff=aHrs?aHrs-qHrs:null;
+  const costDiff=aCost?aCost-qCost:null;
+  const variance=hrsDiff!==null?(hrsDiff>0.05?'over':hrsDiff<-0.05?'under':'on budget'):'unknown';
+  const archived={...job,hrs_actual:aHrs,cost_actual:aCost,variance,over_reason:reason,completion_notes:notes};
+  const techStr=(job.techs||[]).filter(Boolean).join(', ')||'—';
+  const label=`W/O #${job.wo_num} — ${job.customer||''} (${techStr}) — ${variance.toUpperCase()}`;
+  data.archive.unshift({type:'quoted',label,date:new Date().toISOString().split('T')[0],item:archived});
+  data.quoted.splice(currentCompletingIdx,1);
+  currentCompletingIdx=null;
+  updateStats();updateTechFilters();scheduleSave();closeCompletionModal();switchTab('quoted');
+}
+
+function closeCompletionModal(){document.getElementById('completion-modal-bg').classList.remove('open');currentCompletingIdx=null;}
+
+function markDone(type,idx){
+  const item=data[type][idx];
+  const labels={wo:r=>`W/O #${r.wo_num} — ${r.tech}`,parts:r=>`${r.part} (W/O #${r.wo_num})`,scheduled:r=>`${r.customer||''} — W/O #${r.wo_num}`,callbacks:r=>`Callback: ${r.customer}`,tasks:r=>r.task};
+  data.archive.unshift({type,label:labels[type](item),date:new Date().toISOString().split('T')[0],item});
+  data[type].splice(idx,1);updateStats();updateTechFilters();scheduleSave();switchTab(type);
+}
+function delItem(type,idx){data[type].splice(idx,1);updateStats();updateTechFilters();scheduleSave();switchTab(type);}
+function delArchive(idx){data.archive.splice(idx,1);scheduleSave();renderArchive();}
+
+function exportPDF(){
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  const now=new Date();
+  const weekStr=now.toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
+  let y=15;
+  const pageW=210;const margin=14;const colW=pageW-margin*2;
+
+  doc.setFontSize(16);doc.setFont(undefined,'bold');
+  doc.text('Accutemp Weekly Ops Report',margin,y);y+=7;
+  doc.setFontSize(10);doc.setFont(undefined,'normal');doc.setTextColor(100);
+  doc.text(`Week of ${weekStr}`,margin,y);y+=10;doc.setTextColor(0);
+
+  function sectionHeader(title){
+    doc.setFillColor(245,245,243);doc.rect(margin,y-4,colW,7,'F');
+    doc.setFont(undefined,'bold');doc.setFontSize(11);
+    doc.text(title,margin,y);y+=7;doc.setFont(undefined,'normal');doc.setFontSize(9);
+  }
+  function row(cells,widths){
+    let x=margin;
+    cells.forEach((c,i)=>{doc.text(String(c||'—').substring(0,30),x,y);x+=widths[i];});
+    y+=5;if(y>270){doc.addPage();y=15;}
+  }
+  function tableHeader(cols,widths){
+    doc.setFont(undefined,'bold');doc.setFontSize(8);doc.setTextColor(100);
+    let x=margin;cols.forEach((c,i)=>{doc.text(c,x,y);x+=widths[i];});
+    y+=5;doc.setTextColor(0);doc.setFont(undefined,'normal');doc.setFontSize(9);
+  }
+
+  // Open W/Os
+  sectionHeader(`Open Work Orders (${data.wo.length})`);
+  if(data.wo.length){
+    tableHeader(['W/O #','Tech','Type','Status','Due'],[25,30,20,50,colW-125]);
+    data.wo.forEach(r=>row([r.wo_num,r.tech,r.type,r.status,fmtDate(r.due)],[25,30,20,50,colW-125]));
+  }else{doc.setTextColor(150);doc.text('No open work orders',margin,y);doc.setTextColor(0);y+=6;}
+  y+=4;
+
+  // Quoted Jobs
+  sectionHeader(`Quoted Jobs (${data.quoted.length})`);
+  if(data.quoted.length){
+    tableHeader(['W/O #','Customer','Techs','Hrs Q','Cost Q','Status'],[22,45,35,15,25,colW-142]);
+    data.quoted.forEach(r=>row([r.wo_num,r.customer,(r.techs||[]).filter(Boolean).join(', '),r.hrs_quoted,r.cost_quoted?'$'+parseInt(r.cost_quoted).toLocaleString():—,r.status],[22,45,35,15,25,colW-142]));
+  }else{doc.setTextColor(150);doc.text('No quoted jobs',margin,y);doc.setTextColor(0);y+=6;}
+  y+=4;
+
+  // Parts
+  sectionHeader(`Parts Pipeline (${data.parts.length})`);
+  if(data.parts.length){
+    tableHeader(['W/O #','Tech','Part','Supplier','ETA'],[22,28,55,28,colW-133]);
+    data.parts.forEach(r=>row([r.wo_num,r.tech,r.part,r.supplier,fmtDate(r.eta)],[22,28,55,28,colW-133]));
+  }else{doc.setTextColor(150);doc.text('No parts pending',margin,y);doc.setTextColor(0);y+=6;}
+  y+=4;
+
+  // Scheduled
+  sectionHeader(`Scheduled Jobs (${data.scheduled.length})`);
+  if(data.scheduled.length){
+    tableHeader(['W/O #','Tech','Customer','Type','Status','Date'],[22,28,40,20,45,colW-155]);
+    data.scheduled.forEach(r=>row([r.wo_num,r.tech,r.customer,r.type,r.status,fmtDate(r.date)],[22,28,40,20,45,colW-155]));
+  }else{doc.setTextColor(150);doc.text('No scheduled jobs',margin,y);doc.setTextColor(0);y+=6;}
+  y+=4;
+
+  // Callbacks
+  sectionHeader(`Callbacks (${data.callbacks.length})`);
+  if(data.callbacks.length){
+    tableHeader(['Customer','Tech','Deadline'],[60,40,colW-100]);
+    data.callbacks.forEach(r=>row([r.customer,r.tech,fmtDate(r.deadline)],[60,40,colW-100]));
+  }else{doc.setTextColor(150);doc.text('No callbacks',margin,y);doc.setTextColor(0);y+=6;}
+  y+=4;
+
+  // Tasks
+  sectionHeader(`My Tasks (${data.tasks.length})`);
+  if(data.tasks.length){
+    tableHeader(['Task','Category','Due'],[80,35,colW-115]);
+    data.tasks.forEach(r=>row([r.task,r.category,fmtDate(r.due)],[80,35,colW-115]));
+  }else{doc.setTextColor(150);doc.text('No tasks',margin,y);doc.setTextColor(0);y+=6;}
+
+  doc.save(`Accutemp-Ops-${now.toISOString().split('T')[0]}.pdf`);
+}
+
+document.getElementById('modal-bg').addEventListener('click',function(e){if(e.target===this)closeModal();});
+document.getElementById('completion-modal-bg').addEventListener('click',function(e){if(e.target===this)closeCompletionModal();});
 </script>
 </body>
 </html>
