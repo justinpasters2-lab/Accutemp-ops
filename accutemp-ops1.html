@@ -756,7 +756,7 @@ function exportPDF(){
   sectionHeader(`Quoted Jobs (${data.quoted.length})`);
   if(data.quoted.length){
     tableHeader(['W/O #','Customer','Techs','Hrs Q','Cost Q','Status'],[22,45,35,15,25,colW-142]);
-    data.quoted.forEach(r=>row([r.wo_num,r.customer,(r.techs||[]).filter(Boolean).join(', '),r.hrs_quoted,r.cost_quoted?'$'+parseInt(r.cost_quoted).toLocaleString():—,r.status],[22,45,35,15,25,colW-142]));
+    data.quoted.forEach(r=>row([r.wo_num,r.customer,(r.techs||[]).filter(Boolean).join(', '),r.hrs_quoted,r.cost_quoted?'$'+parseInt(r.cost_quoted).toLocaleString():'—',r.status],[22,45,35,15,25,colW-142]));
   }else{doc.setTextColor(150);doc.text('No quoted jobs',margin,y);doc.setTextColor(0);y+=6;}
   y+=4;
 
