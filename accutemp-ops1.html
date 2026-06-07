@@ -60,6 +60,7 @@ tr:hover td{background:#fafafa}
 .badge-over{background:#fce8e6;color:#a33b2e}
 .badge-under{background:#e6f4ea;color:#1e6e3b}
 .badge-onbudget{background:#fef3e2;color:#b45309}
+.badge-completed{background:#e6f4ea;color:#1e6e3b}
 .btn-done{font-size:11px;padding:3px 10px;border-radius:20px;cursor:pointer;background:none;border:1px solid #ddd;color:#666}
 .btn-done:hover{background:#e6f4ea;color:#1e6e3b;border-color:#a8d5b5}
 .btn-edit{font-size:11px;padding:3px 10px;border-radius:20px;cursor:pointer;background:none;border:1px solid #ddd;color:#666}
@@ -68,7 +69,15 @@ tr:hover td{background:#fafafa}
 .btn-del:hover{color:#ea4335}
 .overdue{color:#ea4335!important;font-weight:500}
 .action-btns{display:flex;gap:4px;align-items:center}
-.notes-cell{max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#666}
+.notes-cell{max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#666;cursor:pointer}
+.notes-cell:hover{color:#1a73e8;text-decoration:underline}
+.notes-expanded{white-space:normal;max-width:none;overflow:visible;text-overflow:unset}
+.age-badge{display:inline-block;font-size:10px;padding:1px 6px;border-radius:10px;font-weight:600;margin-left:4px}
+.age-fresh{background:#e6f4ea;color:#1e6e3b}
+.age-warn{background:#fef3e2;color:#b45309}
+.age-old{background:#fce8e6;color:#a33b2e}
+.completed-row td{opacity:0.55;text-decoration:line-through}
+.completed-row td .action-btns,.completed-row td .badge{text-decoration:none}
 .empty{text-align:center;padding:40px;color:#aaa;font-size:13px;background:white;border-radius:8px;border:1px solid #e8e8e8}
 .modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:100;align-items:center;justify-content:center}
 .modal-bg.open{display:flex}
@@ -86,9 +95,8 @@ tr:hover td{background:#fafafa}
 .btn-cancel:hover{background:#f5f5f5}
 .btn-save{font-size:13px;padding:7px 18px;background:#1a1a1a;color:white;border:none;border-radius:6px;cursor:pointer}
 .btn-save:hover{background:#333}
-.quoted-fields{background:#f9f5ff;border-radius:8px;padding:12px;margin-top:8px;border:1px solid #e9d5ff;display:none}
-.quoted-fields.show{display:block}
-.quoted-fields-label{font-size:11px;font-weight:600;color:#6b21a8;margin-bottom:10px;text-transform:uppercase;letter-spacing:0.05em}
+.pm-hrs-row{display:none}
+.pm-hrs-row.show{display:block}
 .tech-list{display:flex;flex-direction:column;gap:6px;margin-top:4px}
 .tech-entry{display:flex;gap:6px;align-items:center}
 .tech-entry input{flex:1}
@@ -102,6 +110,9 @@ tr:hover td{background:#fafafa}
 .variance-over{background:#fce8e6;color:#a33b2e}
 .variance-under{background:#e6f4ea;color:#1e6e3b}
 .variance-even{background:#fef3e2;color:#b45309}
+.checkbox-row{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.checkbox-row input[type=checkbox]{width:16px;height:16px;cursor:pointer;accent-color:#1a73e8}
+.checkbox-row label{font-size:13px;color:#444;cursor:pointer;font-weight:500;margin:0}
 </style>
 </head>
 <body>
@@ -164,7 +175,7 @@ tr:hover td{background:#fafafa}
     </div>
     <table><thead><tr>
       <th style="width:90px">W/O #</th><th style="width:100px">Tech</th><th style="width:80px">Type</th>
-      <th style="width:160px">Status</th><th style="width:90px">Due</th><th>Notes</th><th style="width:110px"></th>
+      <th style="width:160px">Status</th><th style="width:90px">Due</th><th style="width:60px">Age</th><th>Notes</th><th style="width:130px"></th>
     </tr></thead><tbody id="wo-body"></tbody></table>
   </div>
 
@@ -278,6 +289,7 @@ function initOAuth(){
 }
 function signOut(){google.accounts.id.disableAutoSelect();accessToken=null;driveFileId=null;document.getElementById('auth-screen').style.display='flex';document.getElementById('app').style.display='none';}
 function setSync(s,m){const e=document.getElementById('sync-status');e.className='sync-status '+s;e.textContent=m;}
+
 async function loadFromDrive(){
   setSync('saving','Loading...');
   try{
@@ -293,6 +305,7 @@ async function loadFromDrive(){
   }catch(e){setSync('error','Load failed');}
   updateStats();updateTechFilters();renderWO();
 }
+
 async function saveToDrive(){
   if(!accessToken)return;setSync('saving','Saving...');
   try{
@@ -309,6 +322,20 @@ function scheduleSave(){clearTimeout(saveTimeout);saveTimeout=setTimeout(saveToD
 function fmtDate(d){if(!d)return'—';const[y,m,day]=d.split('-');return`${m}/${day}/${y.slice(2)}`;}
 function isOverdue(d){if(!d)return false;return new Date(d)<new Date(new Date().toDateString());}
 function fmtCurrency(v){if(!v)return'—';return'$'+parseFloat(v).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0});}
+function today(){return new Date().toISOString().split('T')[0];}
+
+// Age tracking: days since created
+function calcAge(created){
+  if(!created)return null;
+  const ms=new Date()-new Date(created);
+  return Math.floor(ms/(1000*60*60*24));
+}
+function ageBadge(created){
+  const d=calcAge(created);
+  if(d===null)return'';
+  const cls=d<=3?'age-fresh':d<=7?'age-warn':'age-old';
+  return`<span class="age-badge ${cls}">${d}d</span>`;
+}
 
 function badge(status){
   const map={'In Progress':'badge-progress','Waiting on Parts':'badge-parts','Waiting on Customer':'badge-callback','Needs Follow-up':'badge-callback','Needs Quote':'badge-waiting','Approved - Awaiting Parts':'badge-approved','Scheduled':'badge-scheduled','On Hold':'badge-waiting','Open':'badge-open'};
@@ -316,7 +343,7 @@ function badge(status){
 }
 
 function updateStats(){
-  document.getElementById('s-wo').textContent=data.wo.length;
+  document.getElementById('s-wo').textContent=data.wo.filter(r=>!r.completed).length;
   document.getElementById('s-quoted').textContent=data.quoted.length;
   document.getElementById('s-parts').textContent=data.parts.length;
   document.getElementById('s-scheduled').textContent=data.scheduled.length;
@@ -325,7 +352,7 @@ function updateStats(){
   updateOverdueBadges();
 }
 function updateOverdueBadges(){
-  const counts={wo:data.wo.filter(r=>isOverdue(r.due)).length,quoted:data.quoted.filter(r=>isOverdue(r.date)).length,parts:data.parts.filter(r=>isOverdue(r.eta)).length,scheduled:data.scheduled.filter(r=>isOverdue(r.date)).length,callbacks:data.callbacks.filter(r=>isOverdue(r.deadline)).length,tasks:data.tasks.filter(r=>isOverdue(r.due)).length};
+  const counts={wo:data.wo.filter(r=>!r.completed&&isOverdue(r.due)).length,quoted:data.quoted.filter(r=>isOverdue(r.date)).length,parts:data.parts.filter(r=>isOverdue(r.eta)).length,scheduled:data.scheduled.filter(r=>isOverdue(r.date)).length,callbacks:data.callbacks.filter(r=>isOverdue(r.deadline)).length,tasks:data.tasks.filter(r=>isOverdue(r.due)).length};
   ['wo','quoted','parts','scheduled','callbacks','tasks'].forEach(t=>{
     const btn=document.getElementById('tabbtn-'+t);
     const ex=btn.querySelector('.tab-badge');if(ex)ex.remove();
@@ -360,6 +387,9 @@ function switchTab(t){
 }
 function renderEmpty(id){document.getElementById(id).innerHTML=`<tr><td colspan="10" class="empty">No items — click + to add</td></tr>`;}
 
+// Notes cell click-to-expand
+function toggleNotes(el){el.classList.toggle('notes-expanded');}
+
 function renderWO(){
   const q=(document.getElementById('wo-search').value||'').toLowerCase();
   const f=document.getElementById('wo-filter').value;
@@ -367,12 +397,21 @@ function renderWO(){
   const rows=data.wo.filter(r=>(!q||(r.wo_num+r.tech+(r.notes||'')+r.type).toLowerCase().includes(q))&&(!f||r.status===f)&&(!tech||r.tech===tech));
   const tbody=document.getElementById('wo-body');
   if(!rows.length){renderEmpty('wo-body');return;}
-  tbody.innerHTML=rows.map(r=>{const i=data.wo.indexOf(r);return`<tr>
-    <td style="font-weight:500">${r.wo_num||'—'}</td><td>${r.tech||'—'}</td><td>${r.type||'—'}</td>
-    <td>${badge(r.status)}</td><td class="${isOverdue(r.due)?'overdue':''}">${fmtDate(r.due)}</td>
-    <td class="notes-cell" title="${(r.notes||'').replace(/"/g,'&quot;')}">${r.notes||'—'}</td>
-    <td><div class="action-btns"><button class="btn-edit" onclick="openModal('wo',${i})">Edit</button><button class="btn-done" onclick="markDone('wo',${i})">Done</button><button class="btn-del" onclick="delItem('wo',${i})">✕</button></div></td>
-  </tr>`;}).join('');
+  tbody.innerHTML=rows.map(r=>{
+    const i=data.wo.indexOf(r);
+    const rowCls=r.completed?'completed-row':'';
+    const pmHrs=(r.type==='PM'&&r.pm_hrs)?`<span style="font-size:11px;color:#888;margin-left:4px">${r.pm_hrs}h</span>`:'';
+    return`<tr class="${rowCls}">
+      <td style="font-weight:500">${r.wo_num||'—'}</td>
+      <td>${r.tech||'—'}</td>
+      <td>${r.type||'—'}${pmHrs}</td>
+      <td>${badge(r.status)}</td>
+      <td class="${isOverdue(r.due)&&!r.completed?'overdue':''}">${fmtDate(r.due)}</td>
+      <td>${ageBadge(r.created)}</td>
+      <td class="notes-cell" onclick="toggleNotes(this)" title="Click to expand">${r.notes||'—'}</td>
+      <td><div class="action-btns"><button class="btn-edit" onclick="openModal('wo',${i})">Edit</button><button class="btn-done" onclick="markDone('wo',${i})">Done</button><button class="btn-del" onclick="delItem('wo',${i})">✕</button></div></td>
+    </tr>`;
+  }).join('');
 }
 
 function renderQuoted(){
@@ -420,7 +459,7 @@ function renderScheduled(){
   tbody.innerHTML=rows.map(r=>{const i=data.scheduled.indexOf(r);return`<tr>
     <td style="font-weight:500">${r.wo_num||'—'}</td><td>${r.tech||'—'}</td><td>${r.customer||'—'}</td>
     <td>${r.type||'—'}</td><td>${badge(r.status)}</td><td class="${isOverdue(r.date)?'overdue':''}">${fmtDate(r.date)}</td>
-    <td class="notes-cell" title="${(r.notes||'').replace(/"/g,'&quot;')}">${r.notes||'—'}</td>
+    <td class="notes-cell" onclick="toggleNotes(this)" title="Click to expand">${r.notes||'—'}</td>
     <td><div class="action-btns"><button class="btn-edit" onclick="openModal('scheduled',${i})">Edit</button><button class="btn-done" onclick="markDone('scheduled',${i})">Done</button><button class="btn-del" onclick="delItem('scheduled',${i})">✕</button></div></td>
   </tr>`;}).join('');
 }
@@ -433,7 +472,7 @@ function renderCallbacks(){
   if(!rows.length){renderEmpty('callbacks-body');return;}
   tbody.innerHTML=rows.map(r=>{const i=data.callbacks.indexOf(r);return`<tr>
     <td>${r.customer||'—'}</td><td>${r.tech||'—'}</td>
-    <td class="notes-cell" title="${(r.reason||'').replace(/"/g,'&quot;')}">${r.reason||'—'}</td>
+    <td class="notes-cell" onclick="toggleNotes(this)" title="Click to expand">${r.reason||'—'}</td>
     <td>${fmtDate(r.flagged)}</td><td class="${isOverdue(r.deadline)?'overdue':''}">${fmtDate(r.deadline)}</td>
     <td><div class="action-btns"><button class="btn-edit" onclick="openModal('callbacks',${i})">Edit</button><button class="btn-done" onclick="markDone('callbacks',${i})">Done</button><button class="btn-del" onclick="delItem('callbacks',${i})">✕</button></div></td>
   </tr>`;}).join('');
@@ -447,7 +486,7 @@ function renderTasks(){
   tbody.innerHTML=rows.map(r=>{const i=data.tasks.indexOf(r);return`<tr>
     <td style="font-weight:500">${r.task||'—'}</td><td>${r.category||'—'}</td>
     <td class="${isOverdue(r.due)?'overdue':''}">${fmtDate(r.due)}</td>
-    <td class="notes-cell" title="${(r.notes||'').replace(/"/g,'&quot;')}">${r.notes||'—'}</td>
+    <td class="notes-cell" onclick="toggleNotes(this)" title="Click to expand">${r.notes||'—'}</td>
     <td><div class="action-btns"><button class="btn-edit" onclick="openModal('tasks',${i})">Edit</button><button class="btn-done" onclick="markDone('tasks',${i})">Done</button><button class="btn-del" onclick="delItem('tasks',${i})">✕</button></div></td>
   </tr>`;}).join('');
 }
@@ -461,19 +500,33 @@ function renderArchive(){
   </tr>`).join('');
 }
 
+// PM hrs toggle
+function onTypeChange(){
+  const t=document.getElementById('f-type');
+  const pmRow=document.getElementById('pm-hrs-row');
+  if(!t||!pmRow)return;
+  pmRow.classList.toggle('show',t.value==='PM');
+}
+
 function getModalHTML(type,item){
   const v=(f,d='')=>item?(item[f]||d):d;
   const sel=(f,opts)=>opts.map(o=>`<option${(item?item[f]:'')===o?' selected':''}>${o}</option>`).join('');
-  if(type==='wo')return`<h3>${item?'Edit':'Add'} Work Order</h3>
+
+  if(type==='wo'){
+    const isCompleted=item&&item.completed;
+    return`<h3>${item?'Edit':'Add'} Work Order</h3>
+    ${item?`<div class="checkbox-row"><input type="checkbox" id="f-completed"${isCompleted?' checked':''}><label for="f-completed">Job Completed</label></div>`:''}
     <div class="form-grid">
       <div class="form-row"><label>W/O Number</label><input id="f-wo_num" value="${v('wo_num')}" placeholder="e.g. 10432"></div>
       <div class="form-row"><label>Tech Name</label><input id="f-tech" value="${v('tech')}" placeholder="e.g. Mike"></div>
-      <div class="form-row"><label>Job Type</label><select id="f-type">${sel('type',['Service','PM','Install'])}</select></div>
+      <div class="form-row"><label>Job Type</label><select id="f-type" onchange="onTypeChange()">${sel('type',['Service','PM','Install','Quoted'])}</select></div>
       <div class="form-row"><label>Status</label><select id="f-status">${sel('status',['In Progress','Waiting on Parts','Waiting on Customer','Needs Follow-up','Needs Quote'])}</select></div>
       <div class="form-row"><label>Expected Close</label><input type="date" id="f-due" value="${v('due')}"></div>
     </div>
+    <div class="form-row pm-hrs-row${v('type')==='PM'?' show':''}" id="pm-hrs-row"><label>PM Hours</label><input id="f-pm_hrs" type="number" step="0.5" value="${v('pm_hrs')}" placeholder="e.g. 2.5"></div>
     <div class="form-row"><label>Notes</label><textarea id="f-notes">${v('notes')}</textarea></div>
     <div class="modal-btns"><button class="btn-cancel" onclick="closeModal()">Cancel</button><button class="btn-save" onclick="saveItem('wo')">${item?'Save':'Add'}</button></div>`;
+  }
 
   if(type==='quoted'){
     const techs=item&&item.techs?item.techs:[''];
@@ -482,7 +535,7 @@ function getModalHTML(type,item){
     <div class="form-grid">
       <div class="form-row"><label>W/O Number</label><input id="f-wo_num" value="${v('wo_num')}" placeholder="e.g. 10432"></div>
       <div class="form-row"><label>Customer / Site</label><input id="f-customer" value="${v('customer')}" placeholder="e.g. LRCC Cat"></div>
-      <div class="form-row"><label>Job Type</label><select id="f-type">${sel('type',['Service','PM','Install'])}</select></div>
+      <div class="form-row"><label>Job Type</label><select id="f-type">${sel('type',['Service','PM','Install','Quoted'])}</select></div>
       <div class="form-row"><label>Status</label><select id="f-status">${sel('status',['Scheduled','In Progress','Approved - Awaiting Parts','On Hold'])}</select></div>
       <div class="form-row"><label>Hrs Quoted</label><input id="f-hrs_quoted" type="number" step="0.5" value="${v('hrs_quoted')}" placeholder="e.g. 8"></div>
       <div class="form-row"><label>Cost Quoted ($)</label><input id="f-cost_quoted" type="number" value="${v('cost_quoted')}" placeholder="e.g. 4200"></div>
@@ -509,7 +562,7 @@ function getModalHTML(type,item){
       <div class="form-row"><label>W/O Number</label><input id="f-wo_num" value="${v('wo_num')}" placeholder="e.g. 10432"></div>
       <div class="form-row"><label>Tech</label><input id="f-tech" value="${v('tech')}" placeholder="e.g. Dave"></div>
       <div class="form-row"><label>Customer</label><input id="f-customer" value="${v('customer')}" placeholder="Customer name"></div>
-      <div class="form-row"><label>Job Type</label><select id="f-type">${sel('type',['Service','PM','Install'])}</select></div>
+      <div class="form-row"><label>Job Type</label><select id="f-type">${sel('type',['Service','PM','Install','Quoted'])}</select></div>
       <div class="form-row"><label>Status</label><select id="f-status">${sel('status',['Approved - Awaiting Parts','Scheduled','On Hold'])}</select></div>
       <div class="form-row"><label>Scheduled Date</label><input type="date" id="f-date" value="${v('date')}"></div>
     </div>
@@ -554,10 +607,20 @@ function openModal(type,idx){
 }
 function closeModal(){document.getElementById('modal-bg').classList.remove('open');editingIndex=null;editingType=null;}
 function g(id){const el=document.getElementById(id);return el?el.value.trim():'';}
+function gb(id){const el=document.getElementById(id);return el?el.checked:false;}
 
 function saveItem(type){
   let item={};
-  if(type==='wo') item={wo_num:g('f-wo_num'),tech:g('f-tech'),type:g('f-type'),status:g('f-status'),due:g('f-due'),notes:g('f-notes')};
+  if(type==='wo'){
+    const isNew=editingIndex===null;
+    const existing=isNew?{}:data.wo[editingIndex];
+    item={
+      wo_num:g('f-wo_num'),tech:g('f-tech'),type:g('f-type'),status:g('f-status'),
+      due:g('f-due'),notes:g('f-notes'),pm_hrs:g('f-pm_hrs'),
+      completed:gb('f-completed'),
+      created:existing.created||today()
+    };
+  }
   else if(type==='quoted') item={wo_num:g('f-wo_num'),customer:g('f-customer'),type:g('f-type'),status:g('f-status'),hrs_quoted:g('f-hrs_quoted'),cost_quoted:g('f-cost_quoted'),date:g('f-date'),techs:getTechs_inputs(),notes:g('f-notes')};
   else if(type==='parts') item={wo_num:g('f-wo_num'),tech:g('f-tech'),part:g('f-part'),supplier:g('f-supplier'),ordered:g('f-ordered'),eta:g('f-eta')};
   else if(type==='scheduled') item={wo_num:g('f-wo_num'),tech:g('f-tech'),customer:g('f-customer'),type:g('f-type'),status:g('f-status'),date:g('f-date'),notes:g('f-notes')};
@@ -566,67 +629,6 @@ function saveItem(type){
   if(editingIndex!==null)data[type][editingIndex]=item;
   else data[type].push(item);
   updateStats();updateTechFilters();scheduleSave();closeModal();switchTab(type);
-}
-
-function completeQuoted(idx){
-  const job=data.quoted[idx];
-  document.getElementById('completion-modal-content').innerHTML=`
-    <h3>Complete Quoted Job — W/O #${job.wo_num}</h3>
-    <div class="completion-section">
-      <h4>Quote Summary</h4>
-      <div class="form-grid">
-        <div><div style="font-size:11px;color:#666;margin-bottom:2px">Hrs Quoted</div><div style="font-weight:500">${job.hrs_quoted||'—'}</div></div>
-        <div><div style="font-size:11px;color:#666;margin-bottom:2px">Cost Quoted</div><div style="font-weight:500">${fmtCurrency(job.cost_quoted)}</div></div>
-      </div>
-    </div>
-    <div class="form-grid">
-      <div class="form-row"><label>Actual Hrs</label><input id="c-hrs_actual" type="number" step="0.5" placeholder="e.g. 9.5" oninput="updateVariance()"></div>
-      <div class="form-row"><label>Actual Cost ($)</label><input id="c-cost_actual" type="number" placeholder="e.g. 4800" oninput="updateVariance()"></div>
-    </div>
-    <div id="variance-display"></div>
-    <div class="form-row" id="reason-row" style="display:none">
-      <label>Reason Over Quote</label>
-      <select id="c-reason">
-        <option value="">Select reason...</option>
-        <option>Sales missed item on quote</option>
-        <option>Tech did not have stock</option>
-        <option>Lack of knowledge on task</option>
-        <option>Late site access</option>
-        <option>Unforeseen site conditions</option>
-        <option>Customer added scope</option>
-        <option>Other</option>
-      </select>
-    </div>
-    <div class="form-row"><label>Completion Notes</label><textarea id="c-notes" placeholder="Any final notes..."></textarea></div>
-    <div class="modal-btns"><button class="btn-cancel" onclick="closeCompletionModal()">Cancel</button><button class="btn-save" onclick="finalizeQuoted(${idx})">Complete Job</button></div>`;
-  document.getElementById('completion-modal-bg').classList.add('open');
-}
-
-function updateVariance(){
-  const job=data.quoted[editingIndex!==null?editingIndex:0];
-  const hrsQ=parseFloat(document.querySelector('#completion-modal-content input[id="c-hrs_actual"]')?.closest('.form-grid')?.previousElementSibling?.querySelector('div:nth-child(1) div:nth-child(2)')?.textContent)||0;
-  const hrsA=parseFloat(document.getElementById('c-hrs_actual')?.value)||0;
-  const costQ=parseFloat(document.getElementById('completion-modal-content')?.querySelector('.completion-section .form-grid div:nth-child(2) div:nth-child(2)')?.textContent?.replace(/[$,]/g,''))||0;
-  const costA=parseFloat(document.getElementById('c-cost_actual')?.value)||0;
-
-  const quotedJob=getCurrentCompletingJob();
-  if(!quotedJob)return;
-  const qHrs=parseFloat(quotedJob.hrs_quoted)||0;
-  const qCost=parseFloat(quotedJob.cost_quoted)||0;
-  const aHrs=parseFloat(document.getElementById('c-hrs_actual')?.value)||0;
-  const aCost=parseFloat(document.getElementById('c-cost_actual')?.value)||0;
-
-  let html='';let showReason=false;
-  if(aHrs>0||aCost>0){
-    const hrsDiff=aHrs-qHrs;const costDiff=aCost-qCost;
-    const over=hrsDiff>0||costDiff>0;const under=hrsDiff<0&&costDiff<0;
-    const cls=over?'variance-over':under?'variance-under':'variance-even';
-    const label=over?'OVER QUOTE':under?'UNDER QUOTE':'ON BUDGET';
-    html=`<div class="variance-display ${cls}">${label} — Hrs: ${hrsDiff>0?'+':''}${hrsDiff.toFixed(1)} | Cost: ${costDiff>0?'+':''}${fmtCurrency(Math.abs(costDiff))} ${costDiff>=0?'over':'under'}</div>`;
-    if(over)showReason=true;
-  }
-  document.getElementById('variance-display').innerHTML=html;
-  document.getElementById('reason-row').style.display=showReason?'block':'none';
 }
 
 let currentCompletingIdx=null;
@@ -698,7 +700,7 @@ function finalizeQuoted(){
   const archived={...job,hrs_actual:aHrs,cost_actual:aCost,variance,over_reason:reason,completion_notes:notes};
   const techStr=(job.techs||[]).filter(Boolean).join(', ')||'—';
   const label=`W/O #${job.wo_num} — ${job.customer||''} (${techStr}) — ${variance.toUpperCase()}`;
-  data.archive.unshift({type:'quoted',label,date:new Date().toISOString().split('T')[0],item:archived});
+  data.archive.unshift({type:'quoted',label,date:today(),item:archived});
   data.quoted.splice(currentCompletingIdx,1);
   currentCompletingIdx=null;
   updateStats();updateTechFilters();scheduleSave();closeCompletionModal();switchTab('quoted');
@@ -709,7 +711,7 @@ function closeCompletionModal(){document.getElementById('completion-modal-bg').c
 function markDone(type,idx){
   const item=data[type][idx];
   const labels={wo:r=>`W/O #${r.wo_num} — ${r.tech}`,parts:r=>`${r.part} (W/O #${r.wo_num})`,scheduled:r=>`${r.customer||''} — W/O #${r.wo_num}`,callbacks:r=>`Callback: ${r.customer}`,tasks:r=>r.task};
-  data.archive.unshift({type,label:labels[type](item),date:new Date().toISOString().split('T')[0],item});
+  data.archive.unshift({type,label:labels[type](item),date:today(),item});
   data[type].splice(idx,1);updateStats();updateTechFilters();scheduleSave();switchTab(type);
 }
 function delItem(type,idx){data[type].splice(idx,1);updateStats();updateTechFilters();scheduleSave();switchTab(type);}
@@ -744,15 +746,17 @@ function exportPDF(){
     y+=5;doc.setTextColor(0);doc.setFont(undefined,'normal');doc.setFontSize(9);
   }
 
-  // Open W/Os
-  sectionHeader(`Open Work Orders (${data.wo.length})`);
-  if(data.wo.length){
-    tableHeader(['W/O #','Tech','Type','Status','Due'],[25,30,20,50,colW-125]);
-    data.wo.forEach(r=>row([r.wo_num,r.tech,r.type,r.status,fmtDate(r.due)],[25,30,20,50,colW-125]));
+  sectionHeader(`Open Work Orders (${data.wo.filter(r=>!r.completed).length})`);
+  const openWOs=data.wo.filter(r=>!r.completed);
+  if(openWOs.length){
+    tableHeader(['W/O #','Tech','Type','Status','Due','Age'],[22,28,18,50,20,colW-138]);
+    openWOs.forEach(r=>{
+      const age=calcAge(r.created);
+      row([r.wo_num,r.tech,r.type,r.status,fmtDate(r.due),age!==null?age+'d':'—'],[22,28,18,50,20,colW-138]);
+    });
   }else{doc.setTextColor(150);doc.text('No open work orders',margin,y);doc.setTextColor(0);y+=6;}
   y+=4;
 
-  // Quoted Jobs
   sectionHeader(`Quoted Jobs (${data.quoted.length})`);
   if(data.quoted.length){
     tableHeader(['W/O #','Customer','Techs','Hrs Q','Cost Q','Status'],[22,45,35,15,25,colW-142]);
@@ -760,7 +764,6 @@ function exportPDF(){
   }else{doc.setTextColor(150);doc.text('No quoted jobs',margin,y);doc.setTextColor(0);y+=6;}
   y+=4;
 
-  // Parts
   sectionHeader(`Parts Pipeline (${data.parts.length})`);
   if(data.parts.length){
     tableHeader(['W/O #','Tech','Part','Supplier','ETA'],[22,28,55,28,colW-133]);
@@ -768,7 +771,6 @@ function exportPDF(){
   }else{doc.setTextColor(150);doc.text('No parts pending',margin,y);doc.setTextColor(0);y+=6;}
   y+=4;
 
-  // Scheduled
   sectionHeader(`Scheduled Jobs (${data.scheduled.length})`);
   if(data.scheduled.length){
     tableHeader(['W/O #','Tech','Customer','Type','Status','Date'],[22,28,40,20,45,colW-155]);
@@ -776,7 +778,6 @@ function exportPDF(){
   }else{doc.setTextColor(150);doc.text('No scheduled jobs',margin,y);doc.setTextColor(0);y+=6;}
   y+=4;
 
-  // Callbacks
   sectionHeader(`Callbacks (${data.callbacks.length})`);
   if(data.callbacks.length){
     tableHeader(['Customer','Tech','Deadline'],[60,40,colW-100]);
@@ -784,7 +785,6 @@ function exportPDF(){
   }else{doc.setTextColor(150);doc.text('No callbacks',margin,y);doc.setTextColor(0);y+=6;}
   y+=4;
 
-  // Tasks
   sectionHeader(`My Tasks (${data.tasks.length})`);
   if(data.tasks.length){
     tableHeader(['Task','Category','Due'],[80,35,colW-115]);
