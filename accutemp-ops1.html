@@ -767,33 +767,84 @@ function renderPMTracker(){
   </div>`).join('');
 }
 
-// ── Customer Database ─────────────────────────────────────
+
+  // ── Customer Database ─────────────────────────────────────
 function renderCustomers(){
   const q=(document.getElementById('customers-search').value||'').toLowerCase();
-  // Build customer list from all job sources
-  const customerMap={};
-  const addCustomer=(name,jobLabel,tab)=>{
-    if(!name||name==='—')return;
-    const key=name.toLowerCase();
-    if(!customerMap[key])customerMap[key]={name,jobs:[]};
-    customerMap[key].jobs.push({label:jobLabel,tab});
+
+  // Build deduplicated WO map: keyed by wo_num, highest-priority status wins
+  const STATUS_RANK={'In Progress':5,'Approved - Awaiting Parts':4,'Scheduled':3,'On Hold':2,'Quoted':1};
+  const woMap={};
+
+  const addOrUpdate=(wo_num,customer,status,date,tab)=>{
+    if(!wo_num||!customer||customer==='—')return;
+    const key=wo_num;
+    const rank=STATUS_RANK[status]||0;
+    if(!woMap[key]||rank>(STATUS_RANK[woMap[key].status]||0)){
+      woMap[key]={wo_num,customer,status,date,tab};
+    }
   };
-  data.wo.forEach(r=>addCustomer(r.notes&&r.notes.length<40?'':null,'','')); // WOs don't have customer field
-  data.quoted.forEach(r=>addCustomer(r.customer,`W/O #${r.wo_num} (Quoted · ${r.status})`,'quoted'));
-  data.scheduled.forEach(r=>addCustomer(r.customer,`W/O #${r.wo_num} (Scheduled · ${fmtDate(r.date)})`,'scheduled'));
-  data.callbacks.forEach(r=>addCustomer(r.customer,`Callback — ${r.tech}`,'callbacks'));
-  data.archive.forEach(r=>{if(r.item&&r.item.customer)addCustomer(r.item.customer,`${r.label} (Archived)`,'archive');});
+
+  data.quoted.forEach(r=>addOrUpdate(r.wo_num,r.customer,r.status,r.date,'quoted'));
+  data.scheduled.forEach(r=>addOrUpdate(r.wo_num,r.customer,r.status,r.date,'scheduled'));
+  data.wo.forEach(r=>{if(r.notes&&r.notes.length<40)return;});// WOs have no customer field, skip
+  data.callbacks.forEach(r=>{
+    if(!r.customer||r.customer==='—')return;
+    const key='cb-'+r.customer;
+    if(!woMap[key])woMap[key]={wo_num:null,customer:r.customer,status:'Callback',date:r.deadline,tab:'callbacks',isCallback:true};
+  });
+
+  // Group open jobs by customer
+  const customerMap={};
+  Object.values(woMap).forEach(entry=>{
+    const key=entry.customer.toLowerCase();
+    if(!customerMap[key])customerMap[key]={name:entry.customer,open:[],completed:[]};
+    customerMap[key].open.push(entry);
+  });
+
+  // Pull completed/archived W/Os by customer
+  data.archive.forEach(r=>{
+    if(!r.item||!r.item.customer)return;
+    const key=r.item.customer.toLowerCase();
+    if(!customerMap[key])customerMap[key]={name:r.item.customer,open:[],completed:[]};
+    customerMap[key].completed.push({wo_num:r.item.wo_num,label:r.label,date:r.date});
+  });
 
   const list=document.getElementById('customers-list');
-  const entries=Object.values(customerMap).filter(c=>!q||c.name.toLowerCase().includes(q)).sort((a,b)=>a.name.localeCompare(b.name));
+  const entries=Object.values(customerMap)
+    .filter(c=>!q||c.name.toLowerCase().includes(q))
+    .sort((a,b)=>a.name.localeCompare(b.name));
+
   if(!entries.length){list.innerHTML=`<div class="empty">No customer data found. Customer names are pulled from Quoted Jobs, Scheduled Jobs, and Callbacks.</div>`;return;}
-  list.innerHTML=entries.map(c=>`<div class="customer-card">
-    <div class="customer-card-header">
-      <div class="customer-card-name">${c.name}</div>
-      <span style="font-size:12px;color:#888">${c.jobs.length} job${c.jobs.length!==1?'s':''}</span>
-    </div>
-    <div class="customer-jobs">${c.jobs.map(j=>`<span class="badge badge-open" style="cursor:pointer" onclick="switchTab('${j.tab}')">${j.label}</span>`).join('')}</div>
-  </div>`).join('');
+
+  list.innerHTML=entries.map(c=>{
+    const totalJobs=c.open.length+c.completed.length;
+
+    const openBadges=c.open.map(j=>{
+      if(j.isCallback){
+        return`<span class="badge badge-callback" style="cursor:pointer" onclick="switchTab('callbacks')">Callback${j.date?' · '+fmtDate(j.date):''}</span>`;
+      }
+      const statusClass=j.status==='Scheduled'?'badge-scheduled':j.status==='In Progress'?'badge-progress':j.status==='Approved - Awaiting Parts'?'badge-approved':'badge-quoted';
+      return`<span class="badge ${statusClass}" style="cursor:pointer" onclick="switchTab('${j.tab}')">W/O #${j.wo_num} · ${j.status}${j.date?' · '+fmtDate(j.date):''}</span>`;
+    }).join('');
+
+    const completedSection=c.completed.length?`
+      <div style="margin-top:8px;padding-top:8px;border-top:1px solid #f0f0f0">
+        <div style="font-size:11px;font-weight:500;color:#888;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.04em">Completed</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          ${c.completed.map(j=>`<span class="badge badge-completed" style="cursor:pointer;opacity:0.8" onclick="switchTab('archive')">W/O #${j.wo_num||'?'} · ${fmtDate(j.date)}</span>`).join('')}
+        </div>
+      </div>`:'';
+
+    return`<div class="customer-card">
+      <div class="customer-card-header">
+        <div class="customer-card-name">${c.name}</div>
+        <span style="font-size:12px;color:#888">${totalJobs} job${totalJobs!==1?'s':''}</span>
+      </div>
+      <div class="customer-jobs">${openBadges||'<span style="font-size:12px;color:#aaa">No open jobs</span>'}</div>
+      ${completedSection}
+    </div>`;
+  }).join('');
 }
 
 function renderArchive(){
