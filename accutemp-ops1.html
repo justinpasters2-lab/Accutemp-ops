@@ -12,7 +12,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 #auth-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;flex-direction:column;gap:16px}
 #auth-screen h1{font-size:22px;font-weight:500}
 #auth-screen p{font-size:14px;color:#666}
-#app{display:none;padding:20px 24px;max-width:1200px;margin:0 auto}
+#app{display:none;padding:20px 24px;max-width:1300px;margin:0 auto}
 .header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid #e0e0e0}
 .header h1{font-size:18px;font-weight:500}
 .header-right{display:flex;align-items:center;gap:12px}
@@ -25,6 +25,19 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .sync-status.saving{color:#1a73e8}
 .sync-status.saved{color:#34a853}
 .sync-status.error{color:#ea4335}
+/* Global search bar */
+.global-search-bar{margin-bottom:16px;position:relative}
+.global-search-bar input{width:100%;font-size:13px;height:36px;padding:0 12px 0 36px;border-radius:8px;border:1px solid #ddd;background:white;color:#1a1a1a;outline:none}
+.global-search-bar input:focus{border-color:#1a73e8;box-shadow:0 0 0 3px rgba(26,115,232,0.1)}
+.global-search-bar .search-icon{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:#aaa;font-size:14px;pointer-events:none}
+.global-results{background:white;border:1px solid #e0e0e0;border-radius:8px;overflow:hidden;margin-top:4px;display:none}
+.global-results.show{display:block}
+.global-result-item{padding:10px 14px;border-bottom:1px solid #f0f0f0;cursor:pointer;font-size:13px}
+.global-result-item:last-child{border-bottom:none}
+.global-result-item:hover{background:#f5f5f3}
+.global-result-type{font-size:10px;font-weight:600;text-transform:uppercase;color:#888;margin-right:8px}
+.global-result-main{font-weight:500}
+.global-result-sub{font-size:12px;color:#888;margin-top:1px}
 .stats{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:20px}
 .stat{background:white;border-radius:8px;padding:12px 14px;border:1px solid #e8e8e8}
 .stat-num{font-size:22px;font-weight:500}
@@ -58,6 +71,10 @@ tr:hover td{background:#fafafa}
 .badge-scheduled{background:#e3f2fd;color:#1565c0}
 .badge-quoted{background:#f3e8fd;color:#6b21a8}
 .badge-completed{background:#e6f4ea;color:#1e6e3b}
+.badge-wo{background:#e8f0fe;color:#1557b0}
+.badge-service{background:#fef3e2;color:#b45309}
+.badge-pm{background:#e6f4ea;color:#1e6e3b}
+.badge-install{background:#f3e8fd;color:#6b21a8}
 .btn-done{font-size:11px;padding:3px 10px;border-radius:20px;cursor:pointer;background:none;border:1px solid #ddd;color:#666}
 .btn-done:hover{background:#e6f4ea;color:#1e6e3b;border-color:#a8d5b5}
 .btn-edit{font-size:11px;padding:3px 10px;border-radius:20px;cursor:pointer;background:none;border:1px solid #ddd;color:#666}
@@ -71,7 +88,7 @@ tr:hover td{background:#fafafa}
 .notes-cell{max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#666;cursor:pointer}
 .notes-cell:hover{color:#1a73e8;text-decoration:underline}
 .notes-expanded{white-space:normal;max-width:none;overflow:visible;text-overflow:unset}
-.age-badge{display:inline-block;font-size:10px;padding:1px 6px;border-radius:10px;font-weight:600;margin-left:4px}
+.age-badge{display:inline-block;font-size:10px;padding:1px 6px;border-radius:10px;font-weight:600}
 .age-fresh{background:#e6f4ea;color:#1e6e3b}
 .age-warn{background:#fef3e2;color:#b45309}
 .age-old{background:#fce8e6;color:#a33b2e}
@@ -123,6 +140,34 @@ tr:hover td{background:#fafafa}
 .log-empty{font-size:13px;color:#aaa;padding:16px 0;text-align:center}
 .promoted-banner{background:#e8f5e9;border:1px solid #a8d5b5;border-radius:6px;padding:8px 12px;font-size:12px;color:#1e6e3b;margin-bottom:12px;display:none}
 .promoted-banner.show{display:block}
+/* Board View */
+.board-source-tag{font-size:10px;font-weight:600;padding:1px 6px;border-radius:10px;margin-left:4px;vertical-align:middle}
+.src-wo{background:#e8f0fe;color:#1557b0}
+.src-quoted{background:#f3e8fd;color:#6b21a8}
+.src-scheduled{background:#e3f2fd;color:#1565c0}
+/* Scoreboard */
+.scoreboard-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-top:4px}
+.score-card{background:white;border:1px solid #e8e8e8;border-radius:8px;padding:14px}
+.score-card-name{font-size:14px;font-weight:500;margin-bottom:8px}
+.score-row{display:flex;justify-content:space-between;font-size:12px;padding:3px 0;border-bottom:1px solid #f5f5f3}
+.score-row:last-child{border-bottom:none}
+.score-label{color:#888}
+.score-val{font-weight:500}
+/* PM Tracker */
+.pm-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;margin-top:4px}
+.pm-card{background:white;border:1px solid #e8e8e8;border-radius:8px;padding:14px}
+.pm-card-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}
+.pm-card-customer{font-size:13px;font-weight:500}
+.pm-card-wo{font-size:11px;color:#888}
+.pm-card-tech{font-size:12px;color:#666;margin-bottom:6px}
+.pm-card-meta{display:flex;gap:8px;flex-wrap:wrap;font-size:11px}
+.pm-meta-item{background:#f5f5f3;border-radius:4px;padding:2px 7px;color:#555}
+/* Customer DB */
+.customer-card{background:white;border:1px solid #e8e8e8;border-radius:8px;padding:14px;margin-bottom:8px}
+.customer-card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.customer-card-name{font-size:14px;font-weight:500}
+.customer-history{font-size:12px;color:#888;margin-top:4px}
+.customer-jobs{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
 </style>
 </head>
 <body>
@@ -130,11 +175,7 @@ tr:hover td{background:#fafafa}
 <div id="auth-screen">
   <h1>Accutemp Ops Board</h1>
   <p>Sign in to access your dashboard</p>
-  <div id="g_id_onload"
-    data-client_id="684471418257-d5013g7bv614s9ao4bm9t40h2pgjlalr.apps.googleusercontent.com"
-    data-callback="handleCredential"
-    data-auto_prompt="true">
-  </div>
+  <div id="g_id_onload" data-client_id="684471418257-d5013g7bv614s9ao4bm9t40h2pgjlalr.apps.googleusercontent.com" data-callback="handleCredential" data-auto_prompt="true"></div>
   <div class="g_id_signin" data-type="standard" data-size="large" data-text="sign_in_with"></div>
 </div>
 
@@ -154,6 +195,13 @@ tr:hover td{background:#fafafa}
 
   <div id="promoted-banner" class="promoted-banner"></div>
 
+  <!-- Global Search -->
+  <div class="global-search-bar">
+    <span class="search-icon">🔍</span>
+    <input type="text" id="global-search" placeholder="Global search across all tabs — W/O #, tech, customer, notes..." oninput="globalSearch()" onblur="setTimeout(()=>hideGlobalResults(),200)">
+    <div class="global-results" id="global-results"></div>
+  </div>
+
   <div class="stats">
     <div class="stat"><div class="stat-num" id="s-wo">0</div><div class="stat-label">Open W/Os</div></div>
     <div class="stat"><div class="stat-num" id="s-quoted">0</div><div class="stat-label">Quoted Jobs</div></div>
@@ -164,17 +212,38 @@ tr:hover td{background:#fafafa}
   </div>
 
   <div class="tabs">
-    <button class="tab active" onclick="switchTab('wo')" id="tabbtn-wo">Work Orders</button>
+    <button class="tab active" onclick="switchTab('board')" id="tabbtn-board">Board View</button>
+    <button class="tab" onclick="switchTab('wo')" id="tabbtn-wo">Work Orders</button>
     <button class="tab" onclick="switchTab('quoted')" id="tabbtn-quoted">Quoted Jobs</button>
     <button class="tab" onclick="switchTab('parts')" id="tabbtn-parts">Parts Pipeline</button>
     <button class="tab" onclick="switchTab('scheduled')" id="tabbtn-scheduled">Scheduled Jobs</button>
     <button class="tab" onclick="switchTab('callbacks')" id="tabbtn-callbacks">Callbacks</button>
     <button class="tab" onclick="switchTab('tasks')" id="tabbtn-tasks">My Tasks</button>
+    <button class="tab" onclick="switchTab('scoreboard')" id="tabbtn-scoreboard">Scoreboard</button>
+    <button class="tab" onclick="switchTab('pmtracker')" id="tabbtn-pmtracker">PM Tracker</button>
+    <button class="tab" onclick="switchTab('customers')" id="tabbtn-customers">Customers</button>
     <button class="tab" onclick="switchTab('archive')" id="tabbtn-archive">Archive</button>
   </div>
 
+  <!-- Board View -->
+  <div id="tab-board" class="section active">
+    <div class="toolbar">
+      <input type="text" placeholder="Filter by tech, W/O #, customer, type..." id="board-search" oninput="renderBoard()">
+      <select id="board-tech-filter" onchange="renderBoard()"><option value="">All techs</option></select>
+      <select id="board-type-filter" onchange="renderBoard()">
+        <option value="">All types</option>
+        <option>Service</option><option>PM</option><option>Install</option><option>Quoted</option>
+      </select>
+    </div>
+    <table><thead><tr>
+      <th style="width:90px">W/O #</th><th style="width:100px">Tech</th><th>Customer</th>
+      <th style="width:80px">Type</th><th style="width:160px">Status</th>
+      <th style="width:90px">Date</th><th style="width:60px">Age</th><th style="width:80px">Source</th>
+    </tr></thead><tbody id="board-body"></tbody></table>
+  </div>
+
   <!-- Work Orders -->
-  <div id="tab-wo" class="section active">
+  <div id="tab-wo" class="section">
     <div class="toolbar">
       <input type="text" placeholder="Search tech, W/O #, notes..." id="wo-search" oninput="renderWO()">
       <select id="wo-tech-filter" onchange="renderWO()"><option value="">All techs</option></select>
@@ -264,6 +333,29 @@ tr:hover td{background:#fafafa}
     </tr></thead><tbody id="tasks-body"></tbody></table>
   </div>
 
+  <!-- Scoreboard -->
+  <div id="tab-scoreboard" class="section">
+    <p style="font-size:13px;color:#888;margin-bottom:12px">Live stats per tech based on current board data.</p>
+    <div class="scoreboard-grid" id="scoreboard-grid"></div>
+  </div>
+
+  <!-- PM Tracker -->
+  <div id="tab-pmtracker" class="section">
+    <div class="toolbar">
+      <input type="text" placeholder="Search customer, tech, W/O..." id="pm-search" oninput="renderPMTracker()">
+      <select id="pm-tech-filter" onchange="renderPMTracker()"><option value="">All techs</option></select>
+    </div>
+    <div class="pm-grid" id="pm-grid"></div>
+  </div>
+
+  <!-- Customers -->
+  <div id="tab-customers" class="section">
+    <div class="toolbar">
+      <input type="text" placeholder="Search customer or site..." id="customers-search" oninput="renderCustomers()">
+    </div>
+    <div id="customers-list"></div>
+  </div>
+
   <!-- Archive -->
   <div id="tab-archive" class="section">
     <p style="font-size:13px;color:#888;margin-bottom:12px">Completed items — cleared from main board.</p>
@@ -284,11 +376,7 @@ const FILE_NAME='accutemp-ops-data.json';
 let accessToken=null,driveFileId=null,saveTimeout=null,editingIndex=null,editingType=null;
 let data={wo:[],quoted:[],parts:[],scheduled:[],callbacks:[],tasks:[],archive:[]};
 
-function handleCredential(r){
-  const p=JSON.parse(atob(r.credential.split('.')[1]));
-  document.getElementById('user-info').textContent=p.email;
-  initOAuth();
-}
+function handleCredential(r){const p=JSON.parse(atob(r.credential.split('.')[1]));document.getElementById('user-info').textContent=p.email;initOAuth();}
 function initOAuth(){
   const c=google.accounts.oauth2.initTokenClient({client_id:CLIENT_ID,scope:SCOPES,callback:(t)=>{
     if(t.error){setSync('error','Auth failed');return;}
@@ -317,7 +405,7 @@ async function loadFromDrive(){
     }else{setSync('saved','New file — ready');}
   }catch(e){setSync('error','Load failed');}
   autoPromoteScheduled();
-  updateStats();updateTechFilters();renderWO();
+  updateStats();updateTechFilters();renderBoard();
 }
 
 async function saveToDrive(){
@@ -339,86 +427,55 @@ function fmtCurrency(v){if(!v)return'—';return'$'+parseFloat(v).toLocaleString
 function today(){return new Date().toISOString().split('T')[0];}
 function nowTs(){return new Date().toLocaleString('en-US',{month:'numeric',day:'numeric',year:'2-digit',hour:'numeric',minute:'2-digit',hour12:true});}
 
-// ── Age tracking ──────────────────────────────────────────
-function calcAge(created){
-  if(!created)return null;
-  return Math.floor((new Date()-new Date(created))/(1000*60*60*24));
-}
+function calcAge(created){if(!created)return null;return Math.floor((new Date()-new Date(created))/(1000*60*60*24));}
 function ageBadge(created){
-  const d=calcAge(created);
-  if(d===null)return'';
+  const d=calcAge(created);if(d===null)return'';
   const cls=d<=3?'age-fresh':d<=7?'age-warn':'age-old';
   return`<span class="age-badge ${cls}">${d}d</span>`;
 }
 
-// ── Activity log ──────────────────────────────────────────
-function logActivity(wo,msg){
-  if(!wo.log)wo.log=[];
-  wo.log.unshift({ts:nowTs(),msg});
-}
+function logActivity(wo,msg){if(!wo.log)wo.log=[];wo.log.unshift({ts:nowTs(),msg});}
 
-// ── Auto-sync Quoted → Scheduled ──────────────────────────
 const SYNC_STATUSES=['Scheduled','Approved - Awaiting Parts'];
 function syncQuotedToScheduled(quotedItem){
   if(!quotedItem.wo_num)return;
   const shouldSync=quotedItem.date&&SYNC_STATUSES.includes(quotedItem.status);
   const existingIdx=data.scheduled.findIndex(s=>s._quoted_ref===quotedItem.wo_num);
   if(shouldSync){
-    const synced={
-      wo_num:quotedItem.wo_num,
-      tech:(quotedItem.techs||[]).filter(Boolean).join(', '),
-      customer:quotedItem.customer||'',
-      type:quotedItem.type||'',
-      status:quotedItem.status,
-      date:quotedItem.date,
-      notes:quotedItem.notes||'',
-      _quoted_ref:quotedItem.wo_num
-    };
+    const synced={wo_num:quotedItem.wo_num,tech:(quotedItem.techs||[]).filter(Boolean).join(', '),customer:quotedItem.customer||'',type:quotedItem.type||'',status:quotedItem.status,date:quotedItem.date,notes:quotedItem.notes||'',_quoted_ref:quotedItem.wo_num};
     if(existingIdx>=0)data.scheduled[existingIdx]=synced;
     else data.scheduled.push(synced);
-  }else if(existingIdx>=0){
-    // Remove sync'd entry if status no longer qualifies
-    data.scheduled.splice(existingIdx,1);
-  }
+  }else if(existingIdx>=0){data.scheduled.splice(existingIdx,1);}
 }
-function removeSyncedScheduled(wo_num){
-  const idx=data.scheduled.findIndex(s=>s._quoted_ref===wo_num);
-  if(idx>=0)data.scheduled.splice(idx,1);
-}
+function removeSyncedScheduled(wo_num){const idx=data.scheduled.findIndex(s=>s._quoted_ref===wo_num);if(idx>=0)data.scheduled.splice(idx,1);}
 
-// ── Auto-promote Scheduled → Work Orders ──────────────────
 function autoPromoteScheduled(){
-  const todayStr=today();
-  const promoted=[];
+  const todayStr=today();const promoted=[];
   data.scheduled=data.scheduled.filter(s=>{
     if(s.status==='Scheduled'&&s.date&&s.date<=todayStr){
-      // Check if W/O already exists
       const exists=data.wo.some(w=>w.wo_num===s.wo_num);
       if(!exists){
-        const newWO={
-          wo_num:s.wo_num,tech:s.tech,type:s.type,
-          status:'In Progress',due:'',notes:s.notes||'',
-          pm_hrs:'',completed:false,created:today(),
-          log:[{ts:nowTs(),msg:`Auto-promoted from Scheduled Jobs (was scheduled ${fmtDate(s.date)})`}]
-        };
-        data.wo.push(newWO);
+        data.wo.push({wo_num:s.wo_num,tech:s.tech,type:s.type,status:'In Progress',due:'',notes:s.notes||'',pm_hrs:'',completed:false,created:today(),log:[{ts:nowTs(),msg:`Auto-promoted from Scheduled Jobs (was scheduled ${fmtDate(s.date)})`}]});
         promoted.push(s.wo_num||'unknown');
       }
-      return false; // remove from scheduled
+      return false;
     }
     return true;
   });
   if(promoted.length>0){
     const banner=document.getElementById('promoted-banner');
     banner.textContent=`${promoted.length} job(s) auto-promoted to Work Orders: ${promoted.join(', ')}`;
-    banner.classList.add('show');
-    setTimeout(()=>banner.classList.remove('show'),8000);
+    banner.classList.add('show');setTimeout(()=>banner.classList.remove('show'),8000);
   }
 }
 
 function badge(status){
   const map={'In Progress':'badge-progress','Waiting on Parts':'badge-parts','Waiting on Customer':'badge-callback','Needs Follow-up':'badge-callback','Needs Quote':'badge-waiting','Approved - Awaiting Parts':'badge-approved','Scheduled':'badge-scheduled','On Hold':'badge-waiting','Open':'badge-open'};
   return`<span class="badge ${map[status]||'badge-open'}">${status}</span>`;
+}
+function typeBadge(t){
+  const map={'Service':'badge-service','PM':'badge-pm','Install':'badge-install','Quoted':'badge-quoted'};
+  return`<span class="badge ${map[t]||'badge-open'}">${t||'—'}</span>`;
 }
 
 function updateStats(){
@@ -433,7 +490,7 @@ function updateStats(){
 function updateOverdueBadges(){
   const counts={wo:data.wo.filter(r=>!r.completed&&isOverdue(r.due)).length,quoted:data.quoted.filter(r=>isOverdue(r.date)).length,parts:data.parts.filter(r=>isOverdue(r.eta)).length,scheduled:data.scheduled.filter(r=>isOverdue(r.date)).length,callbacks:data.callbacks.filter(r=>isOverdue(r.deadline)).length,tasks:data.tasks.filter(r=>isOverdue(r.due)).length};
   ['wo','quoted','parts','scheduled','callbacks','tasks'].forEach(t=>{
-    const btn=document.getElementById('tabbtn-'+t);
+    const btn=document.getElementById('tabbtn-'+t);if(!btn)return;
     const ex=btn.querySelector('.tab-badge');if(ex)ex.remove();
     if(counts[t]>0){const b=document.createElement('span');b.className='tab-badge';b.textContent=counts[t];btn.appendChild(b);}
   });
@@ -442,7 +499,7 @@ function getAllTechs(){
   const techs=new Set();
   ['wo','quoted','parts','scheduled','callbacks'].forEach(type=>{
     data[type].forEach(r=>{
-      if(r.tech)techs.add(r.tech);
+      if(r.tech)r.tech.split(',').map(t=>t.trim()).forEach(t=>{if(t)techs.add(t);});
       if(r.techs&&Array.isArray(r.techs))r.techs.forEach(t=>{if(t)techs.add(t);});
     });
   });
@@ -450,37 +507,98 @@ function getAllTechs(){
 }
 function updateTechFilters(){
   const techs=getAllTechs();
-  ['wo','quoted','parts','scheduled','callbacks'].forEach(type=>{
+  ['wo','quoted','parts','scheduled','callbacks','board','pm'].forEach(type=>{
     const sel=document.getElementById(type+'-tech-filter');if(!sel)return;
     const val=sel.value;
     sel.innerHTML='<option value="">All techs</option>'+techs.map(t=>`<option${t===val?' selected':''}>${t}</option>`).join('');
   });
 }
+
+const ALL_TABS=['board','wo','quoted','parts','scheduled','callbacks','tasks','scoreboard','pmtracker','customers','archive'];
 function switchTab(t){
-  const tabs=['wo','quoted','parts','scheduled','callbacks','tasks','archive'];
-  document.querySelectorAll('.tab').forEach((el,i)=>el.classList.toggle('active',tabs[i]===t));
-  document.querySelectorAll('.section').forEach(el=>el.classList.remove('active'));
-  document.getElementById('tab-'+t).classList.add('active');
-  const renders={wo:renderWO,quoted:renderQuoted,parts:renderParts,scheduled:renderScheduled,callbacks:renderCallbacks,tasks:renderTasks,archive:renderArchive};
-  renders[t]();
+  ALL_TABS.forEach(tab=>{
+    const btn=document.getElementById('tabbtn-'+tab);
+    const sec=document.getElementById('tab-'+tab);
+    if(btn)btn.classList.toggle('active',tab===t);
+    if(sec)sec.classList.toggle('active',tab===t);
+  });
+  const renders={board:renderBoard,wo:renderWO,quoted:renderQuoted,parts:renderParts,scheduled:renderScheduled,callbacks:renderCallbacks,tasks:renderTasks,scoreboard:renderScoreboard,pmtracker:renderPMTracker,customers:renderCustomers,archive:renderArchive};
+  if(renders[t])renders[t]();
 }
-function renderEmpty(id){document.getElementById(id).innerHTML=`<tr><td colspan="10" class="empty">No items — click + to add</td></tr>`;}
+
+function renderEmpty(id,cols=10){const el=document.getElementById(id);if(el)el.innerHTML=`<tr><td colspan="${cols}" class="empty">No items</td></tr>`;}
 function toggleNotes(el){el.classList.toggle('notes-expanded');}
 
-// Jump to W/O tab and highlight row
 function jumpToWO(wo_num){
   switchTab('wo');
   setTimeout(()=>{
-    const rows=document.querySelectorAll('#wo-body tr');
-    rows.forEach(row=>{
+    document.querySelectorAll('#wo-body tr').forEach(row=>{
       const cell=row.querySelector('td:first-child');
       if(cell&&cell.textContent.trim()===wo_num){
-        row.classList.add('highlight-row');
-        row.scrollIntoView({behavior:'smooth',block:'center'});
+        row.classList.add('highlight-row');row.scrollIntoView({behavior:'smooth',block:'center'});
         setTimeout(()=>row.classList.remove('highlight-row'),2000);
       }
     });
   },100);
+}
+
+// ── Global Search ─────────────────────────────────────────
+function globalSearch(){
+  const q=(document.getElementById('global-search').value||'').toLowerCase().trim();
+  const el=document.getElementById('global-results');
+  if(q.length<2){el.classList.remove('show');return;}
+  const results=[];
+  data.wo.forEach((r,i)=>{if((r.wo_num+r.tech+(r.notes||'')+r.type).toLowerCase().includes(q))results.push({label:`W/O #${r.wo_num} — ${r.tech}`,sub:`${r.type} · ${r.status}`,tab:'wo',src:'WO'});});
+  data.quoted.forEach((r,i)=>{if((r.wo_num+(r.customer||'')+(r.techs||[]).join(' ')).toLowerCase().includes(q))results.push({label:`W/O #${r.wo_num} — ${r.customer||''}`,sub:`Quoted · ${r.status}`,tab:'quoted',src:'Quoted'});});
+  data.scheduled.forEach((r,i)=>{if((r.wo_num+r.tech+(r.customer||'')).toLowerCase().includes(q))results.push({label:`W/O #${r.wo_num} — ${r.customer||''}`,sub:`Scheduled · ${fmtDate(r.date)}`,tab:'scheduled',src:'Sched'});});
+  data.parts.forEach((r,i)=>{if((r.wo_num+r.tech+(r.part||'')).toLowerCase().includes(q))results.push({label:`${r.part} — W/O #${r.wo_num}`,sub:`Parts · ETA ${fmtDate(r.eta)}`,tab:'parts',src:'Parts'});});
+  data.callbacks.forEach((r,i)=>{if((r.customer+r.tech+(r.reason||'')).toLowerCase().includes(q))results.push({label:`Callback: ${r.customer}`,sub:`Tech: ${r.tech}`,tab:'callbacks',src:'CB'});});
+  data.tasks.forEach((r,i)=>{if((r.task+(r.notes||'')).toLowerCase().includes(q))results.push({label:r.task,sub:`Task · ${r.category||''}`,tab:'tasks',src:'Task'});});
+  if(!results.length){el.innerHTML=`<div class="global-result-item" style="color:#aaa">No results found</div>`;el.classList.add('show');return;}
+  el.innerHTML=results.slice(0,10).map(r=>`<div class="global-result-item" onclick="switchTab('${r.tab}');hideGlobalResults()"><span class="global-result-type">${r.src}</span><span class="global-result-main">${r.label}</span><div class="global-result-sub">${r.sub}</div></div>`).join('');
+  el.classList.add('show');
+}
+function hideGlobalResults(){document.getElementById('global-results').classList.remove('show');}
+
+// ── Board View ────────────────────────────────────────────
+function renderBoard(){
+  const q=(document.getElementById('board-search').value||'').toLowerCase();
+  const tech=document.getElementById('board-tech-filter').value;
+  const typeF=document.getElementById('board-type-filter').value;
+  const rows=[];
+
+  data.wo.filter(r=>!r.completed).forEach(r=>{
+    const techMatch=!tech||r.tech===tech;
+    const typeMatch=!typeF||r.type===typeF;
+    const textMatch=!q||(r.wo_num+r.tech+(r.notes||'')+r.type).toLowerCase().includes(q);
+    if(techMatch&&typeMatch&&textMatch)rows.push({wo_num:r.wo_num,tech:r.tech,customer:'—',type:r.type,status:r.status,date:r.due,created:r.created,src:'WO'});
+  });
+  data.quoted.forEach(r=>{
+    const techStr=(r.techs||[]).filter(Boolean).join(', ');
+    const techMatch=!tech||(r.techs||[]).includes(tech)||techStr.includes(tech);
+    const typeMatch=!typeF||r.type===typeF;
+    const textMatch=!q||(r.wo_num+techStr+(r.customer||'')+r.type).toLowerCase().includes(q);
+    if(techMatch&&typeMatch&&textMatch)rows.push({wo_num:r.wo_num,tech:techStr||'—',customer:r.customer||'—',type:r.type,status:r.status,date:r.date,created:null,src:'Quoted'});
+  });
+  data.scheduled.filter(r=>!r._quoted_ref).forEach(r=>{
+    const techMatch=!tech||r.tech===tech;
+    const typeMatch=!typeF||r.type===typeF;
+    const textMatch=!q||(r.wo_num+r.tech+(r.customer||'')+r.type).toLowerCase().includes(q);
+    if(techMatch&&typeMatch&&textMatch)rows.push({wo_num:r.wo_num,tech:r.tech,customer:r.customer||'—',type:r.type,status:r.status,date:r.date,created:null,src:'Sched'});
+  });
+
+  const tbody=document.getElementById('board-body');
+  if(!rows.length){tbody.innerHTML=`<tr><td colspan="8" class="empty">No open jobs</td></tr>`;return;}
+  tbody.innerHTML=rows.map(r=>`<tr>
+    <td style="font-weight:500">${r.wo_num||'—'}</td>
+    <td>${r.tech||'—'}</td>
+    <td>${r.customer}</td>
+    <td>${typeBadge(r.type)}</td>
+    <td>${badge(r.status)}</td>
+    <td class="${isOverdue(r.date)?'overdue':''}">${fmtDate(r.date)}</td>
+    <td>${r.created?ageBadge(r.created):'—'}</td>
+    <td><span class="board-source-tag src-${r.src.toLowerCase()}">${r.src}</span></td>
+  </tr>`).join('');
 }
 
 function renderWO(){
@@ -489,27 +607,24 @@ function renderWO(){
   const tech=document.getElementById('wo-tech-filter').value;
   const rows=data.wo.filter(r=>(!q||(r.wo_num+r.tech+(r.notes||'')+r.type).toLowerCase().includes(q))&&(!f||r.status===f)&&(!tech||r.tech===tech));
   const tbody=document.getElementById('wo-body');
-  if(!rows.length){renderEmpty('wo-body');return;}
+  if(!rows.length){renderEmpty('wo-body',8);return;}
   tbody.innerHTML=rows.map(r=>{
     const i=data.wo.indexOf(r);
     const rowCls=r.completed?'completed-row':'';
     const pmHrs=(r.type==='PM'&&r.pm_hrs)?`<span style="font-size:11px;color:#888;margin-left:4px">${r.pm_hrs}h</span>`:'';
     const logCount=(r.log&&r.log.length)?`<span style="font-size:10px;color:#6b21a8;margin-left:3px">(${r.log.length})</span>`:'';
     return`<tr class="${rowCls}">
-      <td style="font-weight:500">${r.wo_num||'—'}</td>
-      <td>${r.tech||'—'}</td>
-      <td>${r.type||'—'}${pmHrs}</td>
-      <td>${badge(r.status)}</td>
+      <td style="font-weight:500">${r.wo_num||'—'}</td><td>${r.tech||'—'}</td>
+      <td>${r.type||'—'}${pmHrs}</td><td>${badge(r.status)}</td>
       <td class="${isOverdue(r.due)&&!r.completed?'overdue':''}">${fmtDate(r.due)}</td>
       <td>${ageBadge(r.created)}</td>
-      <td class="notes-cell" onclick="toggleNotes(this)" title="Click to expand">${r.notes||'—'}</td>
+      <td class="notes-cell" onclick="toggleNotes(this)">${r.notes||'—'}</td>
       <td><div class="action-btns">
         <button class="btn-edit" onclick="openModal('wo',${i})">Edit</button>
         <button class="btn-log" onclick="openLog(${i})">Log${logCount}</button>
         <button class="btn-done" onclick="markDone('wo',${i})">Done</button>
         <button class="btn-del" onclick="delItem('wo',${i})">✕</button>
-      </div></td>
-    </tr>`;
+      </div></td></tr>`;
   }).join('');
 }
 
@@ -523,7 +638,7 @@ function renderQuoted(){
     return textMatch&&(!f||r.status===f)&&techMatch;
   });
   const tbody=document.getElementById('quoted-body');
-  if(!rows.length){renderEmpty('quoted-body');return;}
+  if(!rows.length){renderEmpty('quoted-body',9);return;}
   tbody.innerHTML=rows.map(r=>{const i=data.quoted.indexOf(r);
     const techDisplay=(r.techs&&r.techs.filter(Boolean).length>0)?r.techs.filter(Boolean).join(', '):'—';
     const isSynced=SYNC_STATUSES.includes(r.status)&&r.date;
@@ -543,15 +658,14 @@ function renderParts(){
   const tech=document.getElementById('parts-tech-filter').value;
   const rows=data.parts.filter(r=>(!q||(r.wo_num+r.tech+r.part+(r.supplier||'')).toLowerCase().includes(q))&&(!tech||r.tech===tech));
   const tbody=document.getElementById('parts-body');
-  if(!rows.length){renderEmpty('parts-body');return;}
+  if(!rows.length){renderEmpty('parts-body',7);return;}
   tbody.innerHTML=rows.map(r=>{const i=data.parts.indexOf(r);
     const woMatch=r.wo_num&&data.wo.some(w=>w.wo_num===r.wo_num);
     const woCell=woMatch?`<span class="wo-link" onclick="jumpToWO('${r.wo_num}')">${r.wo_num}</span>`:r.wo_num||'—';
-    return`<tr>
-    <td style="font-weight:500">${woCell}</td><td>${r.tech||'—'}</td><td>${r.part||'—'}</td>
+    return`<tr><td style="font-weight:500">${woCell}</td><td>${r.tech||'—'}</td><td>${r.part||'—'}</td>
     <td>${r.supplier||'—'}</td><td>${fmtDate(r.ordered)}</td><td class="${isOverdue(r.eta)?'overdue':''}">${fmtDate(r.eta)}</td>
-    <td><div class="action-btns"><button class="btn-edit" onclick="openModal('parts',${i})">Edit</button><button class="btn-done" onclick="markDone('parts',${i})">In</button><button class="btn-del" onclick="delItem('parts',${i})">✕</button></div></td>
-  </tr>`;}).join('');
+    <td><div class="action-btns"><button class="btn-edit" onclick="openModal('parts',${i})">Edit</button><button class="btn-done" onclick="markDone('parts',${i})">In</button><button class="btn-del" onclick="delItem('parts',${i})">✕</button></div></td></tr>`;
+  }).join('');
 }
 
 function renderScheduled(){
@@ -560,20 +674,18 @@ function renderScheduled(){
   const tech=document.getElementById('scheduled-tech-filter').value;
   const rows=data.scheduled.filter(r=>(!q||(r.wo_num+r.tech+(r.customer||'')+(r.notes||'')).toLowerCase().includes(q))&&(!f||r.status===f)&&(!tech||r.tech===tech));
   const tbody=document.getElementById('scheduled-body');
-  if(!rows.length){renderEmpty('scheduled-body');return;}
-  tbody.innerHTML=rows.map(r=>{const i=data.scheduled.indexOf(r);
-    const isRef=!!r._quoted_ref;
+  if(!rows.length){renderEmpty('scheduled-body',8);return;}
+  tbody.innerHTML=rows.map(r=>{const i=data.scheduled.indexOf(r);const isRef=!!r._quoted_ref;
     return`<tr>
     <td style="font-weight:500">${r.wo_num||'—'}${isRef?'<span style="font-size:10px;color:#6b21a8;margin-left:4px">Q</span>':''}</td>
-    <td>${r.tech||'—'}</td><td>${r.customer||'—'}</td>
-    <td>${r.type||'—'}</td><td>${badge(r.status)}</td><td class="${isOverdue(r.date)?'overdue':''}">${fmtDate(r.date)}</td>
-    <td class="notes-cell" onclick="toggleNotes(this)" title="Click to expand">${r.notes||'—'}</td>
+    <td>${r.tech||'—'}</td><td>${r.customer||'—'}</td><td>${r.type||'—'}</td>
+    <td>${badge(r.status)}</td><td class="${isOverdue(r.date)?'overdue':''}">${fmtDate(r.date)}</td>
+    <td class="notes-cell" onclick="toggleNotes(this)">${r.notes||'—'}</td>
     <td><div class="action-btns">
-      ${isRef?'<span style="font-size:11px;color:#888;padding:0 4px">from Quote</span>':'<button class="btn-edit" onclick="openModal(\'scheduled\','+i+')">Edit</button>'}
+      ${isRef?'<span style="font-size:11px;color:#888;padding:0 4px">from Quote</span>':`<button class="btn-edit" onclick="openModal('scheduled',${i})">Edit</button>`}
       <button class="btn-done" onclick="markDone('scheduled',${i})">Done</button>
       <button class="btn-del" onclick="delItem('scheduled',${i})">✕</button>
-    </div></td>
-  </tr>`;}).join('');
+    </div></td></tr>`;}).join('');
 }
 
 function renderCallbacks(){
@@ -581,10 +693,10 @@ function renderCallbacks(){
   const tech=document.getElementById('callbacks-tech-filter').value;
   const rows=data.callbacks.filter(r=>(!q||(r.customer+r.tech+(r.reason||'')).toLowerCase().includes(q))&&(!tech||r.tech===tech));
   const tbody=document.getElementById('callbacks-body');
-  if(!rows.length){renderEmpty('callbacks-body');return;}
+  if(!rows.length){renderEmpty('callbacks-body',6);return;}
   tbody.innerHTML=rows.map(r=>{const i=data.callbacks.indexOf(r);return`<tr>
     <td>${r.customer||'—'}</td><td>${r.tech||'—'}</td>
-    <td class="notes-cell" onclick="toggleNotes(this)" title="Click to expand">${r.reason||'—'}</td>
+    <td class="notes-cell" onclick="toggleNotes(this)">${r.reason||'—'}</td>
     <td>${fmtDate(r.flagged)}</td><td class="${isOverdue(r.deadline)?'overdue':''}">${fmtDate(r.deadline)}</td>
     <td><div class="action-btns"><button class="btn-edit" onclick="openModal('callbacks',${i})">Edit</button><button class="btn-done" onclick="markDone('callbacks',${i})">Done</button><button class="btn-del" onclick="delItem('callbacks',${i})">✕</button></div></td>
   </tr>`;}).join('');
@@ -594,42 +706,117 @@ function renderTasks(){
   const q=(document.getElementById('tasks-search').value||'').toLowerCase();
   const rows=data.tasks.filter(r=>!q||(r.task+(r.category||'')+(r.notes||'')).toLowerCase().includes(q));
   const tbody=document.getElementById('tasks-body');
-  if(!rows.length){renderEmpty('tasks-body');return;}
+  if(!rows.length){renderEmpty('tasks-body',5);return;}
   tbody.innerHTML=rows.map(r=>{const i=data.tasks.indexOf(r);return`<tr>
     <td style="font-weight:500">${r.task||'—'}</td><td>${r.category||'—'}</td>
     <td class="${isOverdue(r.due)?'overdue':''}">${fmtDate(r.due)}</td>
-    <td class="notes-cell" onclick="toggleNotes(this)" title="Click to expand">${r.notes||'—'}</td>
+    <td class="notes-cell" onclick="toggleNotes(this)">${r.notes||'—'}</td>
     <td><div class="action-btns"><button class="btn-edit" onclick="openModal('tasks',${i})">Edit</button><button class="btn-done" onclick="markDone('tasks',${i})">Done</button><button class="btn-del" onclick="delItem('tasks',${i})">✕</button></div></td>
   </tr>`;}).join('');
 }
 
+// ── Scoreboard ────────────────────────────────────────────
+function renderScoreboard(){
+  const techs=getAllTechs();
+  const grid=document.getElementById('scoreboard-grid');
+  if(!techs.length){grid.innerHTML=`<div class="empty">No tech data yet.</div>`;return;}
+  grid.innerHTML=techs.map(tech=>{
+    const openWOs=data.wo.filter(r=>!r.completed&&r.tech===tech).length;
+    const completedWOs=data.archive.filter(r=>r.type==='wo'&&r.item&&r.item.tech===tech).length;
+    const callbacks=data.callbacks.filter(r=>r.tech===tech).length;
+    const partsOwed=data.parts.filter(r=>r.tech===tech).length;
+    const scheduled=data.scheduled.filter(r=>r.tech===tech).length;
+    const overdueWOs=data.wo.filter(r=>!r.completed&&r.tech===tech&&isOverdue(r.due)).length;
+    return`<div class="score-card">
+      <div class="score-card-name">${tech}</div>
+      <div class="score-row"><span class="score-label">Open W/Os</span><span class="score-val">${openWOs}</span></div>
+      <div class="score-row"><span class="score-label">Overdue</span><span class="score-val" style="${overdueWOs>0?'color:#ea4335':''}">${overdueWOs}</span></div>
+      <div class="score-row"><span class="score-label">Scheduled</span><span class="score-val">${scheduled}</span></div>
+      <div class="score-row"><span class="score-label">Parts Pending</span><span class="score-val">${partsOwed}</span></div>
+      <div class="score-row"><span class="score-label">Callbacks</span><span class="score-val" style="${callbacks>0?'color:#ea4335':''}">${callbacks}</span></div>
+      <div class="score-row"><span class="score-label">Completed (archive)</span><span class="score-val">${completedWOs}</span></div>
+    </div>`;
+  }).join('');
+}
+
+// ── PM Tracker ────────────────────────────────────────────
+function renderPMTracker(){
+  const q=(document.getElementById('pm-search').value||'').toLowerCase();
+  const tech=document.getElementById('pm-tech-filter').value;
+  const pmJobs=[
+    ...data.wo.filter(r=>r.type==='PM'&&!r.completed).map(r=>({wo_num:r.wo_num,tech:r.tech,customer:r.notes||'',status:r.status,date:r.due,hrs:r.pm_hrs,src:'WO'})),
+    ...data.quoted.filter(r=>r.type==='PM').map(r=>({wo_num:r.wo_num,tech:(r.techs||[]).filter(Boolean).join(', '),customer:r.customer||'',status:r.status,date:r.date,hrs:r.hrs_quoted,src:'Quoted'})),
+    ...data.scheduled.filter(r=>r.type==='PM').map(r=>({wo_num:r.wo_num,tech:r.tech,customer:r.customer||'',status:r.status,date:r.date,hrs:'',src:'Sched'}))
+  ].filter(r=>(!q||(r.wo_num+r.tech+r.customer).toLowerCase().includes(q))&&(!tech||r.tech===tech||r.tech.includes(tech)));
+  const grid=document.getElementById('pm-grid');
+  if(!pmJobs.length){grid.innerHTML=`<div class="empty" style="grid-column:1/-1">No PM jobs on board.</div>`;return;}
+  grid.innerHTML=pmJobs.map(r=>`<div class="pm-card">
+    <div class="pm-card-header">
+      <div>
+        <div class="pm-card-customer">${r.customer||'W/O #'+r.wo_num}</div>
+        <div class="pm-card-wo">W/O #${r.wo_num||'—'}</div>
+      </div>
+      ${badge(r.status)}
+    </div>
+    <div class="pm-card-tech">Tech: ${r.tech||'—'}</div>
+    <div class="pm-card-meta">
+      ${r.date?`<span class="pm-meta-item ${isOverdue(r.date)?'overdue':''}">📅 ${fmtDate(r.date)}</span>`:''}
+      ${r.hrs?`<span class="pm-meta-item">⏱ ${r.hrs}h</span>`:''}
+      <span class="pm-meta-item">${r.src}</span>
+    </div>
+  </div>`).join('');
+}
+
+// ── Customer Database ─────────────────────────────────────
+function renderCustomers(){
+  const q=(document.getElementById('customers-search').value||'').toLowerCase();
+  // Build customer list from all job sources
+  const customerMap={};
+  const addCustomer=(name,jobLabel,tab)=>{
+    if(!name||name==='—')return;
+    const key=name.toLowerCase();
+    if(!customerMap[key])customerMap[key]={name,jobs:[]};
+    customerMap[key].jobs.push({label:jobLabel,tab});
+  };
+  data.wo.forEach(r=>addCustomer(r.notes&&r.notes.length<40?'':null,'','')); // WOs don't have customer field
+  data.quoted.forEach(r=>addCustomer(r.customer,`W/O #${r.wo_num} (Quoted · ${r.status})`,'quoted'));
+  data.scheduled.forEach(r=>addCustomer(r.customer,`W/O #${r.wo_num} (Scheduled · ${fmtDate(r.date)})`,'scheduled'));
+  data.callbacks.forEach(r=>addCustomer(r.customer,`Callback — ${r.tech}`,'callbacks'));
+  data.archive.forEach(r=>{if(r.item&&r.item.customer)addCustomer(r.item.customer,`${r.label} (Archived)`,'archive');});
+
+  const list=document.getElementById('customers-list');
+  const entries=Object.values(customerMap).filter(c=>!q||c.name.toLowerCase().includes(q)).sort((a,b)=>a.name.localeCompare(b.name));
+  if(!entries.length){list.innerHTML=`<div class="empty">No customer data found. Customer names are pulled from Quoted Jobs, Scheduled Jobs, and Callbacks.</div>`;return;}
+  list.innerHTML=entries.map(c=>`<div class="customer-card">
+    <div class="customer-card-header">
+      <div class="customer-card-name">${c.name}</div>
+      <span style="font-size:12px;color:#888">${c.jobs.length} job${c.jobs.length!==1?'s':''}</span>
+    </div>
+    <div class="customer-jobs">${c.jobs.map(j=>`<span class="badge badge-open" style="cursor:pointer" onclick="switchTab('${j.tab}')">${j.label}</span>`).join('')}</div>
+  </div>`).join('');
+}
+
 function renderArchive(){
   const tbody=document.getElementById('archive-body');
-  if(!data.archive.length){renderEmpty('archive-body');return;}
+  if(!data.archive.length){renderEmpty('archive-body',4);return;}
   tbody.innerHTML=data.archive.map((r,i)=>`<tr>
     <td><span class="badge badge-open">${r.type}</span></td><td>${r.label}</td>
     <td>${fmtDate(r.date)}</td><td><button class="btn-del" onclick="delArchive(${i})">✕</button></td>
   </tr>`).join('');
 }
 
-// ── Activity Log Modal ────────────────────────────────────
+// ── Activity Log ──────────────────────────────────────────
 function openLog(idx){
   const wo=data.wo[idx];
   const entries=(wo.log&&wo.log.length)?wo.log.map(e=>`<div class="log-entry"><span class="log-time">${e.ts}</span><span class="log-msg">${e.msg}</span></div>`).join(''):`<div class="log-empty">No activity logged yet.</div>`;
-  document.getElementById('log-modal-content').innerHTML=`
-    <h3>Activity Log — W/O #${wo.wo_num||'?'}</h3>
-    <div class="activity-log">${entries}</div>
-    <div class="modal-btns"><button class="btn-cancel" onclick="closeLogModal()">Close</button></div>`;
+  document.getElementById('log-modal-content').innerHTML=`<h3>Activity Log — W/O #${wo.wo_num||'?'}</h3><div class="activity-log">${entries}</div><div class="modal-btns"><button class="btn-cancel" onclick="closeLogModal()">Close</button></div>`;
   document.getElementById('log-modal-bg').classList.add('open');
 }
 function closeLogModal(){document.getElementById('log-modal-bg').classList.remove('open');}
 
-// ── PM hrs toggle ─────────────────────────────────────────
 function onTypeChange(){
-  const t=document.getElementById('f-type');
-  const pmRow=document.getElementById('pm-hrs-row');
-  if(!t||!pmRow)return;
-  pmRow.classList.toggle('show',t.value==='PM');
+  const t=document.getElementById('f-type');const pmRow=document.getElementById('pm-hrs-row');
+  if(!t||!pmRow)return;pmRow.classList.toggle('show',t.value==='PM');
 }
 
 function getModalHTML(type,item){
@@ -651,7 +838,6 @@ function getModalHTML(type,item){
     <div class="form-row"><label>Notes</label><textarea id="f-notes">${v('notes')}</textarea></div>
     <div class="modal-btns"><button class="btn-cancel" onclick="closeModal()">Cancel</button><button class="btn-save" onclick="saveItem('wo')">${item?'Save':'Add'}</button></div>`;
   }
-
   if(type==='quoted'){
     const techs=item&&item.techs?item.techs:[''];
     const techInputs=techs.map((t,i)=>`<div class="tech-entry" id="tech-entry-${i}"><input value="${t}" placeholder="Tech name" class="tech-input"><button type="button" class="btn-remove-tech" onclick="removeTech(${i})">✕</button></div>`).join('');
@@ -669,7 +855,6 @@ function getModalHTML(type,item){
     <div class="form-row"><label>Notes</label><textarea id="f-notes">${v('notes')}</textarea></div>
     <div class="modal-btns"><button class="btn-cancel" onclick="closeModal()">Cancel</button><button class="btn-save" onclick="saveItem('quoted')">${item?'Save':'Add'}</button></div>`;
   }
-
   if(type==='parts')return`<h3>${item?'Edit':'Add'} Parts Order</h3>
     <div class="form-grid">
       <div class="form-row"><label>W/O Number</label><input id="f-wo_num" value="${v('wo_num')}" placeholder="e.g. 10432"></div>
@@ -680,7 +865,6 @@ function getModalHTML(type,item){
       <div class="form-row"><label>ETA</label><input type="date" id="f-eta" value="${v('eta')}"></div>
     </div>
     <div class="modal-btns"><button class="btn-cancel" onclick="closeModal()">Cancel</button><button class="btn-save" onclick="saveItem('parts')">${item?'Save':'Add'}</button></div>`;
-
   if(type==='scheduled')return`<h3>${item?'Edit':'Add'} Scheduled Job</h3>
     <div class="form-grid">
       <div class="form-row"><label>W/O Number</label><input id="f-wo_num" value="${v('wo_num')}" placeholder="e.g. 10432"></div>
@@ -692,7 +876,6 @@ function getModalHTML(type,item){
     </div>
     <div class="form-row"><label>Notes</label><textarea id="f-notes">${v('notes')}</textarea></div>
     <div class="modal-btns"><button class="btn-cancel" onclick="closeModal()">Cancel</button><button class="btn-save" onclick="saveItem('scheduled')">${item?'Save':'Add'}</button></div>`;
-
   if(type==='callbacks')return`<h3>${item?'Edit':'Add'} Callback</h3>
     <div class="form-grid">
       <div class="form-row"><label>Customer</label><input id="f-customer" value="${v('customer')}" placeholder="Customer name"></div>
@@ -702,7 +885,6 @@ function getModalHTML(type,item){
     </div>
     <div class="form-row"><label>Reason</label><textarea id="f-reason">${v('reason')}</textarea></div>
     <div class="modal-btns"><button class="btn-cancel" onclick="closeModal()">Cancel</button><button class="btn-save" onclick="saveItem('callbacks')">${item?'Save':'Add'}</button></div>`;
-
   if(type==='tasks')return`<h3>${item?'Edit':'Add'} Task</h3>
     <div class="form-grid">
       <div class="form-row"><label>Task</label><input id="f-task" value="${v('task')}" placeholder="What needs to get done"></div>
@@ -713,22 +895,11 @@ function getModalHTML(type,item){
     <div class="modal-btns"><button class="btn-cancel" onclick="closeModal()">Cancel</button><button class="btn-save" onclick="saveItem('tasks')">${item?'Save':'Add'}</button></div>`;
 }
 
-function addTech(){
-  const list=document.getElementById('tech-list');
-  const idx=list.children.length;
-  const div=document.createElement('div');div.className='tech-entry';div.id='tech-entry-'+idx;
-  div.innerHTML=`<input value="" placeholder="Tech name" class="tech-input"><button type="button" class="btn-remove-tech" onclick="removeTech(${idx})">✕</button>`;
-  list.appendChild(div);
-}
+function addTech(){const list=document.getElementById('tech-list');const idx=list.children.length;const div=document.createElement('div');div.className='tech-entry';div.id='tech-entry-'+idx;div.innerHTML=`<input value="" placeholder="Tech name" class="tech-input"><button type="button" class="btn-remove-tech" onclick="removeTech(${idx})">✕</button>`;list.appendChild(div);}
 function removeTech(idx){const el=document.getElementById('tech-entry-'+idx);if(el)el.remove();}
 function getTechs_inputs(){return[...document.querySelectorAll('.tech-input')].map(i=>i.value.trim()).filter(Boolean);}
 
-function openModal(type,idx){
-  editingType=type;editingIndex=idx;
-  const item=idx!==null?data[type][idx]:null;
-  document.getElementById('modal-content').innerHTML=getModalHTML(type,item);
-  document.getElementById('modal-bg').classList.add('open');
-}
+function openModal(type,idx){editingType=type;editingIndex=idx;const item=idx!==null?data[type][idx]:null;document.getElementById('modal-content').innerHTML=getModalHTML(type,item);document.getElementById('modal-bg').classList.add('open');}
 function closeModal(){document.getElementById('modal-bg').classList.remove('open');editingIndex=null;editingType=null;}
 function g(id){const el=document.getElementById(id);return el?el.value.trim():'';}
 function gb(id){const el=document.getElementById(id);return el?el.checked:false;}
@@ -736,45 +907,25 @@ function gb(id){const el=document.getElementById(id);return el?el.checked:false;
 function saveItem(type){
   let item={};
   if(type==='wo'){
-    const isNew=editingIndex===null;
-    const existing=isNew?{}:data.wo[editingIndex];
-    const prevStatus=existing.status||'';
-    const newStatus=g('f-status');
-    item={
-      wo_num:g('f-wo_num'),tech:g('f-tech'),type:g('f-type'),status:newStatus,
-      due:g('f-due'),notes:g('f-notes'),pm_hrs:g('f-pm_hrs'),
-      completed:gb('f-completed'),
-      created:existing.created||today(),
-      log:existing.log||[]
-    };
-    // Log status changes
-    if(!isNew&&prevStatus&&prevStatus!==newStatus){
-      logActivity(item,`Status changed: ${prevStatus} → ${newStatus}`);
-    } else if(isNew){
-      logActivity(item,`W/O created`);
-    } else {
-      logActivity(item,`W/O updated`);
-    }
+    const isNew=editingIndex===null;const existing=isNew?{}:data.wo[editingIndex];
+    const prevStatus=existing.status||'';const newStatus=g('f-status');
+    item={wo_num:g('f-wo_num'),tech:g('f-tech'),type:g('f-type'),status:newStatus,due:g('f-due'),notes:g('f-notes'),pm_hrs:g('f-pm_hrs'),completed:gb('f-completed'),created:existing.created||today(),log:existing.log||[]};
+    if(!isNew&&prevStatus&&prevStatus!==newStatus)logActivity(item,`Status changed: ${prevStatus} → ${newStatus}`);
+    else if(isNew)logActivity(item,`W/O created`);
+    else logActivity(item,`W/O updated`);
   }
-  else if(type==='quoted'){
-    item={wo_num:g('f-wo_num'),customer:g('f-customer'),type:g('f-type'),status:g('f-status'),hrs_quoted:g('f-hrs_quoted'),cost_quoted:g('f-cost_quoted'),date:g('f-date'),techs:getTechs_inputs(),notes:g('f-notes')};
-    // Sync to scheduled
-    syncQuotedToScheduled(item);
-  }
-  else if(type==='parts') item={wo_num:g('f-wo_num'),tech:g('f-tech'),part:g('f-part'),supplier:g('f-supplier'),ordered:g('f-ordered'),eta:g('f-eta')};
-  else if(type==='scheduled') item={wo_num:g('f-wo_num'),tech:g('f-tech'),customer:g('f-customer'),type:g('f-type'),status:g('f-status'),date:g('f-date'),notes:g('f-notes')};
-  else if(type==='callbacks') item={customer:g('f-customer'),tech:g('f-tech'),flagged:g('f-flagged'),deadline:g('f-deadline'),reason:g('f-reason')};
-  else if(type==='tasks') item={task:g('f-task'),category:g('f-category'),due:g('f-due'),notes:g('f-notes')};
-
-  if(editingIndex!==null)data[type][editingIndex]=item;
-  else data[type].push(item);
+  else if(type==='quoted'){item={wo_num:g('f-wo_num'),customer:g('f-customer'),type:g('f-type'),status:g('f-status'),hrs_quoted:g('f-hrs_quoted'),cost_quoted:g('f-cost_quoted'),date:g('f-date'),techs:getTechs_inputs(),notes:g('f-notes')};syncQuotedToScheduled(item);}
+  else if(type==='parts')item={wo_num:g('f-wo_num'),tech:g('f-tech'),part:g('f-part'),supplier:g('f-supplier'),ordered:g('f-ordered'),eta:g('f-eta')};
+  else if(type==='scheduled')item={wo_num:g('f-wo_num'),tech:g('f-tech'),customer:g('f-customer'),type:g('f-type'),status:g('f-status'),date:g('f-date'),notes:g('f-notes')};
+  else if(type==='callbacks')item={customer:g('f-customer'),tech:g('f-tech'),flagged:g('f-flagged'),deadline:g('f-deadline'),reason:g('f-reason')};
+  else if(type==='tasks')item={task:g('f-task'),category:g('f-category'),due:g('f-due'),notes:g('f-notes')};
+  if(editingIndex!==null)data[type][editingIndex]=item;else data[type].push(item);
   updateStats();updateTechFilters();scheduleSave();closeModal();switchTab(type);
 }
 
 let currentCompletingIdx=null;
 function completeQuoted(idx){
-  currentCompletingIdx=idx;
-  const job=data.quoted[idx];
+  currentCompletingIdx=idx;const job=data.quoted[idx];
   document.getElementById('completion-modal-content').innerHTML=`
     <h3>Complete Quoted Job — W/O #${job.wo_num||''}</h3>
     <div class="completion-section"><h4>Quote Summary</h4>
@@ -790,64 +941,45 @@ function completeQuoted(idx){
     </div>
     <div id="variance-display" style="margin-bottom:12px"></div>
     <div class="form-row" id="reason-row" style="display:none"><label>Reason Over Quote</label>
-      <select id="c-reason">
-        <option value="">Select reason...</option>
-        <option>Sales missed item on quote</option><option>Tech did not have stock</option>
-        <option>Lack of knowledge on task</option><option>Late site access</option>
-        <option>Unforeseen site conditions</option><option>Customer added scope</option><option>Other</option>
-      </select>
+      <select id="c-reason"><option value="">Select reason...</option><option>Sales missed item on quote</option><option>Tech did not have stock</option><option>Lack of knowledge on task</option><option>Late site access</option><option>Unforeseen site conditions</option><option>Customer added scope</option><option>Other</option></select>
     </div>
     <div class="form-row"><label>Completion Notes</label><textarea id="c-notes" placeholder="Any final notes..."></textarea></div>
     <div class="modal-btns"><button class="btn-cancel" onclick="closeCompletionModal()">Cancel</button><button class="btn-save" onclick="finalizeQuoted()">Complete Job</button></div>`;
   document.getElementById('completion-modal-bg').classList.add('open');
 }
-
 function getCurrentCompletingJob(){return currentCompletingIdx!==null?data.quoted[currentCompletingIdx]:null;}
-
 function calcVariance(){
   const job=getCurrentCompletingJob();if(!job)return;
-  const qHrs=parseFloat(job.hrs_quoted)||0;
-  const qCost=parseFloat(job.cost_quoted)||0;
-  const aHrs=parseFloat(document.getElementById('c-hrs_actual')?.value)||0;
-  const aCost=parseFloat(document.getElementById('c-cost_actual')?.value)||0;
+  const qHrs=parseFloat(job.hrs_quoted)||0,qCost=parseFloat(job.cost_quoted)||0;
+  const aHrs=parseFloat(document.getElementById('c-hrs_actual')?.value)||0,aCost=parseFloat(document.getElementById('c-cost_actual')?.value)||0;
   let html='';let showReason=false;
   if(aHrs>0||aCost>0){
-    const hrsDiff=aHrs-qHrs;const costDiff=aCost-qCost;
-    const over=hrsDiff>0.05||costDiff>0.5;
-    const under=hrsDiff<-0.05&&costDiff<-0.5;
+    const hrsDiff=aHrs-qHrs,costDiff=aCost-qCost;
+    const over=hrsDiff>0.05||costDiff>0.5,under=hrsDiff<-0.05&&costDiff<-0.5;
     const cls=over?'variance-over':under?'variance-under':'variance-even';
     const label=over?'OVER QUOTE':under?'UNDER QUOTE':'ON BUDGET';
     const hrsStr=hrsDiff===0?'±0':(hrsDiff>0?'+':'')+hrsDiff.toFixed(1)+' hrs';
-    const costAbs=Math.abs(costDiff);const costStr=(costDiff>=0?'+':'-')+'$'+costAbs.toLocaleString('en-US',{maximumFractionDigits:0});
+    const costStr=(costDiff>=0?'+':'-')+'$'+Math.abs(costDiff).toLocaleString('en-US',{maximumFractionDigits:0});
     html=`<div class="variance-display ${cls}">${label} &nbsp;|&nbsp; Hrs: ${hrsStr} &nbsp;|&nbsp; Cost: ${costStr}</div>`;
     if(over)showReason=true;
   }
   document.getElementById('variance-display').innerHTML=html;
   document.getElementById('reason-row').style.display=showReason?'block':'none';
 }
-
 function finalizeQuoted(){
   const job=getCurrentCompletingJob();if(!job)return;
   const aHrs=parseFloat(document.getElementById('c-hrs_actual')?.value)||null;
   const aCost=parseFloat(document.getElementById('c-cost_actual')?.value)||null;
   const reason=document.getElementById('c-reason')?.value||'';
   const notes=document.getElementById('c-notes')?.value||'';
-  const qHrs=parseFloat(job.hrs_quoted)||0;
-  const qCost=parseFloat(job.cost_quoted)||0;
-  const hrsDiff=aHrs?aHrs-qHrs:null;
-  const costDiff=aCost?aCost-qCost:null;
+  const hrsDiff=aHrs?(aHrs-(parseFloat(job.hrs_quoted)||0)):null;
   const variance=hrsDiff!==null?(hrsDiff>0.05?'over':hrsDiff<-0.05?'under':'on budget'):'unknown';
-  const archived={...job,hrs_actual:aHrs,cost_actual:aCost,variance,over_reason:reason,completion_notes:notes};
   const techStr=(job.techs||[]).filter(Boolean).join(', ')||'—';
-  const label=`W/O #${job.wo_num} — ${job.customer||''} (${techStr}) — ${variance.toUpperCase()}`;
-  data.archive.unshift({type:'quoted',label,date:today(),item:archived});
-  // Remove synced scheduled entry
+  data.archive.unshift({type:'quoted',label:`W/O #${job.wo_num} — ${job.customer||''} (${techStr}) — ${variance.toUpperCase()}`,date:today(),item:{...job,hrs_actual:aHrs,cost_actual:aCost,variance,over_reason:reason,completion_notes:notes}});
   removeSyncedScheduled(job.wo_num);
-  data.quoted.splice(currentCompletingIdx,1);
-  currentCompletingIdx=null;
+  data.quoted.splice(currentCompletingIdx,1);currentCompletingIdx=null;
   updateStats();updateTechFilters();scheduleSave();closeCompletionModal();switchTab('quoted');
 }
-
 function closeCompletionModal(){document.getElementById('completion-modal-bg').classList.remove('open');currentCompletingIdx=null;}
 
 function markDone(type,idx){
@@ -857,85 +989,38 @@ function markDone(type,idx){
   data[type].splice(idx,1);updateStats();updateTechFilters();scheduleSave();switchTab(type);
 }
 function delItem(type,idx){
-  if(type==='quoted'){
-    const wo_num=data.quoted[idx]?.wo_num;
-    if(wo_num)removeSyncedScheduled(wo_num);
-  }
+  if(type==='quoted'){const wo_num=data.quoted[idx]?.wo_num;if(wo_num)removeSyncedScheduled(wo_num);}
   data[type].splice(idx,1);updateStats();updateTechFilters();scheduleSave();switchTab(type);
 }
 function delArchive(idx){data.archive.splice(idx,1);scheduleSave();renderArchive();}
 
 function exportPDF(){
-  const {jsPDF}=window.jspdf;
-  const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
-  const now=new Date();
-  const weekStr=now.toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
-  let y=15;
-  const pageW=210;const margin=14;const colW=pageW-margin*2;
-
-  doc.setFontSize(16);doc.setFont(undefined,'bold');
-  doc.text('Accutemp Weekly Ops Report',margin,y);y+=7;
-  doc.setFontSize(10);doc.setFont(undefined,'normal');doc.setTextColor(100);
-  doc.text(`Week of ${weekStr}`,margin,y);y+=10;doc.setTextColor(0);
-
-  function sectionHeader(title){
-    doc.setFillColor(245,245,243);doc.rect(margin,y-4,colW,7,'F');
-    doc.setFont(undefined,'bold');doc.setFontSize(11);
-    doc.text(title,margin,y);y+=7;doc.setFont(undefined,'normal');doc.setFontSize(9);
-  }
-  function row(cells,widths){
-    let x=margin;
-    cells.forEach((c,i)=>{doc.text(String(c||'—').substring(0,30),x,y);x+=widths[i];});
-    y+=5;if(y>270){doc.addPage();y=15;}
-  }
-  function tableHeader(cols,widths){
-    doc.setFont(undefined,'bold');doc.setFontSize(8);doc.setTextColor(100);
-    let x=margin;cols.forEach((c,i)=>{doc.text(c,x,y);x+=widths[i];});
-    y+=5;doc.setTextColor(0);doc.setFont(undefined,'normal');doc.setFontSize(9);
-  }
-
+  const {jsPDF}=window.jspdf;const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  const now=new Date();let y=15;const pageW=210,margin=14,colW=pageW-margin*2;
+  doc.setFontSize(16);doc.setFont(undefined,'bold');doc.text('Accutemp Weekly Ops Report',margin,y);y+=7;
+  doc.setFontSize(10);doc.setFont(undefined,'normal');doc.setTextColor(100);doc.text(`Week of ${now.toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})}`,margin,y);y+=10;doc.setTextColor(0);
+  function sH(title){doc.setFillColor(245,245,243);doc.rect(margin,y-4,colW,7,'F');doc.setFont(undefined,'bold');doc.setFontSize(11);doc.text(title,margin,y);y+=7;doc.setFont(undefined,'normal');doc.setFontSize(9);}
+  function row(cells,widths){let x=margin;cells.forEach((c,i)=>{doc.text(String(c||'—').substring(0,30),x,y);x+=widths[i];});y+=5;if(y>270){doc.addPage();y=15;}}
+  function tH(cols,widths){doc.setFont(undefined,'bold');doc.setFontSize(8);doc.setTextColor(100);let x=margin;cols.forEach((c,i)=>{doc.text(c,x,y);x+=widths[i];});y+=5;doc.setTextColor(0);doc.setFont(undefined,'normal');doc.setFontSize(9);}
   const openWOs=data.wo.filter(r=>!r.completed);
-  sectionHeader(`Open Work Orders (${openWOs.length})`);
-  if(openWOs.length){
-    tableHeader(['W/O #','Tech','Type','Status','Due','Age'],[22,28,18,50,20,colW-138]);
-    openWOs.forEach(r=>{const age=calcAge(r.created);row([r.wo_num,r.tech,r.type,r.status,fmtDate(r.due),age!==null?age+'d':'—'],[22,28,18,50,20,colW-138]);});
-  }else{doc.setTextColor(150);doc.text('No open work orders',margin,y);doc.setTextColor(0);y+=6;}
-  y+=4;
-
-  sectionHeader(`Quoted Jobs (${data.quoted.length})`);
-  if(data.quoted.length){
-    tableHeader(['W/O #','Customer','Techs','Hrs Q','Cost Q','Status'],[22,45,35,15,25,colW-142]);
-    data.quoted.forEach(r=>row([r.wo_num,r.customer,(r.techs||[]).filter(Boolean).join(', '),r.hrs_quoted,r.cost_quoted?'$'+parseInt(r.cost_quoted).toLocaleString():'—',r.status],[22,45,35,15,25,colW-142]));
-  }else{doc.setTextColor(150);doc.text('No quoted jobs',margin,y);doc.setTextColor(0);y+=6;}
-  y+=4;
-
-  sectionHeader(`Parts Pipeline (${data.parts.length})`);
-  if(data.parts.length){
-    tableHeader(['W/O #','Tech','Part','Supplier','ETA'],[22,28,55,28,colW-133]);
-    data.parts.forEach(r=>row([r.wo_num,r.tech,r.part,r.supplier,fmtDate(r.eta)],[22,28,55,28,colW-133]));
-  }else{doc.setTextColor(150);doc.text('No parts pending',margin,y);doc.setTextColor(0);y+=6;}
-  y+=4;
-
-  sectionHeader(`Scheduled Jobs (${data.scheduled.length})`);
-  if(data.scheduled.length){
-    tableHeader(['W/O #','Tech','Customer','Type','Status','Date'],[22,28,40,20,45,colW-155]);
-    data.scheduled.forEach(r=>row([r.wo_num,r.tech,r.customer,r.type,r.status,fmtDate(r.date)],[22,28,40,20,45,colW-155]));
-  }else{doc.setTextColor(150);doc.text('No scheduled jobs',margin,y);doc.setTextColor(0);y+=6;}
-  y+=4;
-
-  sectionHeader(`Callbacks (${data.callbacks.length})`);
-  if(data.callbacks.length){
-    tableHeader(['Customer','Tech','Deadline'],[60,40,colW-100]);
-    data.callbacks.forEach(r=>row([r.customer,r.tech,fmtDate(r.deadline)],[60,40,colW-100]));
-  }else{doc.setTextColor(150);doc.text('No callbacks',margin,y);doc.setTextColor(0);y+=6;}
-  y+=4;
-
-  sectionHeader(`My Tasks (${data.tasks.length})`);
-  if(data.tasks.length){
-    tableHeader(['Task','Category','Due'],[80,35,colW-115]);
-    data.tasks.forEach(r=>row([r.task,r.category,fmtDate(r.due)],[80,35,colW-115]));
-  }else{doc.setTextColor(150);doc.text('No tasks',margin,y);doc.setTextColor(0);y+=6;}
-
+  sH(`Open Work Orders (${openWOs.length})`);
+  if(openWOs.length){tH(['W/O #','Tech','Type','Status','Due','Age'],[22,28,18,50,20,colW-138]);openWOs.forEach(r=>{const age=calcAge(r.created);row([r.wo_num,r.tech,r.type,r.status,fmtDate(r.due),age!==null?age+'d':'—'],[22,28,18,50,20,colW-138]);});}
+  else{doc.setTextColor(150);doc.text('No open work orders',margin,y);doc.setTextColor(0);y+=6;}y+=4;
+  sH(`Quoted Jobs (${data.quoted.length})`);
+  if(data.quoted.length){tH(['W/O #','Customer','Techs','Hrs Q','Cost Q','Status'],[22,45,35,15,25,colW-142]);data.quoted.forEach(r=>row([r.wo_num,r.customer,(r.techs||[]).filter(Boolean).join(', '),r.hrs_quoted,r.cost_quoted?'$'+parseInt(r.cost_quoted).toLocaleString():'—',r.status],[22,45,35,15,25,colW-142]));}
+  else{doc.setTextColor(150);doc.text('No quoted jobs',margin,y);doc.setTextColor(0);y+=6;}y+=4;
+  sH(`Parts Pipeline (${data.parts.length})`);
+  if(data.parts.length){tH(['W/O #','Tech','Part','Supplier','ETA'],[22,28,55,28,colW-133]);data.parts.forEach(r=>row([r.wo_num,r.tech,r.part,r.supplier,fmtDate(r.eta)],[22,28,55,28,colW-133]));}
+  else{doc.setTextColor(150);doc.text('No parts pending',margin,y);doc.setTextColor(0);y+=6;}y+=4;
+  sH(`Scheduled Jobs (${data.scheduled.length})`);
+  if(data.scheduled.length){tH(['W/O #','Tech','Customer','Type','Status','Date'],[22,28,40,20,45,colW-155]);data.scheduled.forEach(r=>row([r.wo_num,r.tech,r.customer,r.type,r.status,fmtDate(r.date)],[22,28,40,20,45,colW-155]));}
+  else{doc.setTextColor(150);doc.text('No scheduled jobs',margin,y);doc.setTextColor(0);y+=6;}y+=4;
+  sH(`Callbacks (${data.callbacks.length})`);
+  if(data.callbacks.length){tH(['Customer','Tech','Deadline'],[60,40,colW-100]);data.callbacks.forEach(r=>row([r.customer,r.tech,fmtDate(r.deadline)],[60,40,colW-100]));}
+  else{doc.setTextColor(150);doc.text('No callbacks',margin,y);doc.setTextColor(0);y+=6;}y+=4;
+  sH(`My Tasks (${data.tasks.length})`);
+  if(data.tasks.length){tH(['Task','Category','Due'],[80,35,colW-115]);data.tasks.forEach(r=>row([r.task,r.category,fmtDate(r.due)],[80,35,colW-115]));}
+  else{doc.setTextColor(150);doc.text('No tasks',margin,y);doc.setTextColor(0);y+=6;}
   doc.save(`Accutemp-Ops-${now.toISOString().split('T')[0]}.pdf`);
 }
 
