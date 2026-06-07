@@ -57,14 +57,13 @@ tr:hover td{background:#fafafa}
 .badge-approved{background:#e8f5e9;color:#2e7d32}
 .badge-scheduled{background:#e3f2fd;color:#1565c0}
 .badge-quoted{background:#f3e8fd;color:#6b21a8}
-.badge-over{background:#fce8e6;color:#a33b2e}
-.badge-under{background:#e6f4ea;color:#1e6e3b}
-.badge-onbudget{background:#fef3e2;color:#b45309}
 .badge-completed{background:#e6f4ea;color:#1e6e3b}
 .btn-done{font-size:11px;padding:3px 10px;border-radius:20px;cursor:pointer;background:none;border:1px solid #ddd;color:#666}
 .btn-done:hover{background:#e6f4ea;color:#1e6e3b;border-color:#a8d5b5}
 .btn-edit{font-size:11px;padding:3px 10px;border-radius:20px;cursor:pointer;background:none;border:1px solid #ddd;color:#666}
 .btn-edit:hover{background:#e8f0fe;color:#1557b0;border-color:#aac4f5}
+.btn-log{font-size:11px;padding:3px 10px;border-radius:20px;cursor:pointer;background:none;border:1px solid #ddd;color:#666}
+.btn-log:hover{background:#f3e8fd;color:#6b21a8;border-color:#d8b4fe}
 .btn-del{font-size:13px;padding:2px 6px;border-radius:4px;cursor:pointer;background:none;border:none;color:#ccc}
 .btn-del:hover{color:#ea4335}
 .overdue{color:#ea4335!important;font-weight:500}
@@ -78,6 +77,10 @@ tr:hover td{background:#fafafa}
 .age-old{background:#fce8e6;color:#a33b2e}
 .completed-row td{opacity:0.55;text-decoration:line-through}
 .completed-row td .action-btns,.completed-row td .badge{text-decoration:none}
+.synced-row td:first-child::after{content:' ↗';font-size:10px;color:#6b21a8;font-weight:600}
+.wo-link{color:#1a73e8;cursor:pointer;text-decoration:underline;font-weight:500}
+.wo-link:hover{color:#1557b0}
+.highlight-row td{background:#fffbcc!important;transition:background 1.5s}
 .empty{text-align:center;padding:40px;color:#aaa;font-size:13px;background:white;border-radius:8px;border:1px solid #e8e8e8}
 .modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:100;align-items:center;justify-content:center}
 .modal-bg.open{display:flex}
@@ -89,7 +92,6 @@ tr:hover td{background:#fafafa}
 .form-row input:focus,.form-row select:focus,.form-row textarea:focus{border-color:#1a73e8}
 .form-row textarea{resize:vertical;min-height:70px}
 .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.form-grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
 .modal-btns{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;padding-top:16px;border-top:1px solid #f0f0f0}
 .btn-cancel{font-size:13px;padding:7px 18px;background:none;border:1px solid #ddd;border-radius:6px;cursor:pointer;color:#444}
 .btn-cancel:hover{background:#f5f5f5}
@@ -113,6 +115,14 @@ tr:hover td{background:#fafafa}
 .checkbox-row{display:flex;align-items:center;gap:8px;margin-bottom:12px}
 .checkbox-row input[type=checkbox]{width:16px;height:16px;cursor:pointer;accent-color:#1a73e8}
 .checkbox-row label{font-size:13px;color:#444;cursor:pointer;font-weight:500;margin:0}
+.activity-log{margin-top:4px}
+.log-entry{display:flex;gap:10px;padding:8px 0;border-bottom:1px solid #f0f0f0;font-size:12px}
+.log-entry:last-child{border-bottom:none}
+.log-time{color:#999;white-space:nowrap;min-width:110px}
+.log-msg{color:#444}
+.log-empty{font-size:13px;color:#aaa;padding:16px 0;text-align:center}
+.promoted-banner{background:#e8f5e9;border:1px solid #a8d5b5;border-radius:6px;padding:8px 12px;font-size:12px;color:#1e6e3b;margin-bottom:12px;display:none}
+.promoted-banner.show{display:block}
 </style>
 </head>
 <body>
@@ -141,6 +151,8 @@ tr:hover td{background:#fafafa}
       <button class="btn-signout" onclick="signOut()">Sign out</button>
     </div>
   </div>
+
+  <div id="promoted-banner" class="promoted-banner"></div>
 
   <div class="stats">
     <div class="stat"><div class="stat-num" id="s-wo">0</div><div class="stat-label">Open W/Os</div></div>
@@ -175,7 +187,7 @@ tr:hover td{background:#fafafa}
     </div>
     <table><thead><tr>
       <th style="width:90px">W/O #</th><th style="width:100px">Tech</th><th style="width:80px">Type</th>
-      <th style="width:160px">Status</th><th style="width:90px">Due</th><th style="width:60px">Age</th><th>Notes</th><th style="width:130px"></th>
+      <th style="width:160px">Status</th><th style="width:90px">Due</th><th style="width:50px">Age</th><th>Notes</th><th style="width:150px"></th>
     </tr></thead><tbody id="wo-body"></tbody></table>
   </div>
 
@@ -263,6 +275,7 @@ tr:hover td{background:#fafafa}
 
 <div class="modal-bg" id="modal-bg"><div class="modal" id="modal-content"></div></div>
 <div class="modal-bg" id="completion-modal-bg"><div class="modal" id="completion-modal-content"></div></div>
+<div class="modal-bg" id="log-modal-bg"><div class="modal" id="log-modal-content"></div></div>
 
 <script>
 const CLIENT_ID='684471418257-d5013g7bv614s9ao4bm9t40h2pgjlalr.apps.googleusercontent.com';
@@ -303,6 +316,7 @@ async function loadFromDrive(){
       setSync('saved','Loaded from Drive');
     }else{setSync('saved','New file — ready');}
   }catch(e){setSync('error','Load failed');}
+  autoPromoteScheduled();
   updateStats();updateTechFilters();renderWO();
 }
 
@@ -323,18 +337,83 @@ function fmtDate(d){if(!d)return'—';const[y,m,day]=d.split('-');return`${m}/${
 function isOverdue(d){if(!d)return false;return new Date(d)<new Date(new Date().toDateString());}
 function fmtCurrency(v){if(!v)return'—';return'$'+parseFloat(v).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0});}
 function today(){return new Date().toISOString().split('T')[0];}
+function nowTs(){return new Date().toLocaleString('en-US',{month:'numeric',day:'numeric',year:'2-digit',hour:'numeric',minute:'2-digit',hour12:true});}
 
-// Age tracking: days since created
+// ── Age tracking ──────────────────────────────────────────
 function calcAge(created){
   if(!created)return null;
-  const ms=new Date()-new Date(created);
-  return Math.floor(ms/(1000*60*60*24));
+  return Math.floor((new Date()-new Date(created))/(1000*60*60*24));
 }
 function ageBadge(created){
   const d=calcAge(created);
   if(d===null)return'';
   const cls=d<=3?'age-fresh':d<=7?'age-warn':'age-old';
   return`<span class="age-badge ${cls}">${d}d</span>`;
+}
+
+// ── Activity log ──────────────────────────────────────────
+function logActivity(wo,msg){
+  if(!wo.log)wo.log=[];
+  wo.log.unshift({ts:nowTs(),msg});
+}
+
+// ── Auto-sync Quoted → Scheduled ──────────────────────────
+const SYNC_STATUSES=['Scheduled','Approved - Awaiting Parts'];
+function syncQuotedToScheduled(quotedItem){
+  if(!quotedItem.wo_num)return;
+  const shouldSync=quotedItem.date&&SYNC_STATUSES.includes(quotedItem.status);
+  const existingIdx=data.scheduled.findIndex(s=>s._quoted_ref===quotedItem.wo_num);
+  if(shouldSync){
+    const synced={
+      wo_num:quotedItem.wo_num,
+      tech:(quotedItem.techs||[]).filter(Boolean).join(', '),
+      customer:quotedItem.customer||'',
+      type:quotedItem.type||'',
+      status:quotedItem.status,
+      date:quotedItem.date,
+      notes:quotedItem.notes||'',
+      _quoted_ref:quotedItem.wo_num
+    };
+    if(existingIdx>=0)data.scheduled[existingIdx]=synced;
+    else data.scheduled.push(synced);
+  }else if(existingIdx>=0){
+    // Remove sync'd entry if status no longer qualifies
+    data.scheduled.splice(existingIdx,1);
+  }
+}
+function removeSyncedScheduled(wo_num){
+  const idx=data.scheduled.findIndex(s=>s._quoted_ref===wo_num);
+  if(idx>=0)data.scheduled.splice(idx,1);
+}
+
+// ── Auto-promote Scheduled → Work Orders ──────────────────
+function autoPromoteScheduled(){
+  const todayStr=today();
+  const promoted=[];
+  data.scheduled=data.scheduled.filter(s=>{
+    if(s.status==='Scheduled'&&s.date&&s.date<=todayStr){
+      // Check if W/O already exists
+      const exists=data.wo.some(w=>w.wo_num===s.wo_num);
+      if(!exists){
+        const newWO={
+          wo_num:s.wo_num,tech:s.tech,type:s.type,
+          status:'In Progress',due:'',notes:s.notes||'',
+          pm_hrs:'',completed:false,created:today(),
+          log:[{ts:nowTs(),msg:`Auto-promoted from Scheduled Jobs (was scheduled ${fmtDate(s.date)})`}]
+        };
+        data.wo.push(newWO);
+        promoted.push(s.wo_num||'unknown');
+      }
+      return false; // remove from scheduled
+    }
+    return true;
+  });
+  if(promoted.length>0){
+    const banner=document.getElementById('promoted-banner');
+    banner.textContent=`${promoted.length} job(s) auto-promoted to Work Orders: ${promoted.join(', ')}`;
+    banner.classList.add('show');
+    setTimeout(()=>banner.classList.remove('show'),8000);
+  }
 }
 
 function badge(status){
@@ -359,7 +438,7 @@ function updateOverdueBadges(){
     if(counts[t]>0){const b=document.createElement('span');b.className='tab-badge';b.textContent=counts[t];btn.appendChild(b);}
   });
 }
-function getTechs(){
+function getAllTechs(){
   const techs=new Set();
   ['wo','quoted','parts','scheduled','callbacks'].forEach(type=>{
     data[type].forEach(r=>{
@@ -370,7 +449,7 @@ function getTechs(){
   return[...techs].sort();
 }
 function updateTechFilters(){
-  const techs=getTechs();
+  const techs=getAllTechs();
   ['wo','quoted','parts','scheduled','callbacks'].forEach(type=>{
     const sel=document.getElementById(type+'-tech-filter');if(!sel)return;
     const val=sel.value;
@@ -386,9 +465,23 @@ function switchTab(t){
   renders[t]();
 }
 function renderEmpty(id){document.getElementById(id).innerHTML=`<tr><td colspan="10" class="empty">No items — click + to add</td></tr>`;}
-
-// Notes cell click-to-expand
 function toggleNotes(el){el.classList.toggle('notes-expanded');}
+
+// Jump to W/O tab and highlight row
+function jumpToWO(wo_num){
+  switchTab('wo');
+  setTimeout(()=>{
+    const rows=document.querySelectorAll('#wo-body tr');
+    rows.forEach(row=>{
+      const cell=row.querySelector('td:first-child');
+      if(cell&&cell.textContent.trim()===wo_num){
+        row.classList.add('highlight-row');
+        row.scrollIntoView({behavior:'smooth',block:'center'});
+        setTimeout(()=>row.classList.remove('highlight-row'),2000);
+      }
+    });
+  },100);
+}
 
 function renderWO(){
   const q=(document.getElementById('wo-search').value||'').toLowerCase();
@@ -401,6 +494,7 @@ function renderWO(){
     const i=data.wo.indexOf(r);
     const rowCls=r.completed?'completed-row':'';
     const pmHrs=(r.type==='PM'&&r.pm_hrs)?`<span style="font-size:11px;color:#888;margin-left:4px">${r.pm_hrs}h</span>`:'';
+    const logCount=(r.log&&r.log.length)?`<span style="font-size:10px;color:#6b21a8;margin-left:3px">(${r.log.length})</span>`:'';
     return`<tr class="${rowCls}">
       <td style="font-weight:500">${r.wo_num||'—'}</td>
       <td>${r.tech||'—'}</td>
@@ -409,7 +503,12 @@ function renderWO(){
       <td class="${isOverdue(r.due)&&!r.completed?'overdue':''}">${fmtDate(r.due)}</td>
       <td>${ageBadge(r.created)}</td>
       <td class="notes-cell" onclick="toggleNotes(this)" title="Click to expand">${r.notes||'—'}</td>
-      <td><div class="action-btns"><button class="btn-edit" onclick="openModal('wo',${i})">Edit</button><button class="btn-done" onclick="markDone('wo',${i})">Done</button><button class="btn-del" onclick="delItem('wo',${i})">✕</button></div></td>
+      <td><div class="action-btns">
+        <button class="btn-edit" onclick="openModal('wo',${i})">Edit</button>
+        <button class="btn-log" onclick="openLog(${i})">Log${logCount}</button>
+        <button class="btn-done" onclick="markDone('wo',${i})">Done</button>
+        <button class="btn-del" onclick="delItem('wo',${i})">✕</button>
+      </div></td>
     </tr>`;
   }).join('');
 }
@@ -427,11 +526,14 @@ function renderQuoted(){
   if(!rows.length){renderEmpty('quoted-body');return;}
   tbody.innerHTML=rows.map(r=>{const i=data.quoted.indexOf(r);
     const techDisplay=(r.techs&&r.techs.filter(Boolean).length>0)?r.techs.filter(Boolean).join(', '):'—';
-    return`<tr>
-      <td style="font-weight:500">${r.wo_num||'—'}</td><td title="${techDisplay}">${techDisplay.length>15?techDisplay.slice(0,15)+'…':techDisplay}</td>
+    const isSynced=SYNC_STATUSES.includes(r.status)&&r.date;
+    return`<tr${isSynced?' class="synced-row"':''}>
+      <td style="font-weight:500">${r.wo_num||'—'}</td>
+      <td title="${techDisplay}">${techDisplay.length>15?techDisplay.slice(0,15)+'…':techDisplay}</td>
       <td>${r.customer||'—'}</td><td>${r.type||'—'}</td>
       <td>${r.hrs_quoted||'—'}</td><td>${fmtCurrency(r.cost_quoted)}</td>
-      <td>${badge(r.status)}</td><td class="${isOverdue(r.date)?'overdue':''}">${fmtDate(r.date)}</td>
+      <td>${badge(r.status)}${isSynced?'<span style="font-size:10px;color:#6b21a8;margin-left:4px">↗ Sched</span>':''}</td>
+      <td class="${isOverdue(r.date)?'overdue':''}">${fmtDate(r.date)}</td>
       <td><div class="action-btns"><button class="btn-edit" onclick="openModal('quoted',${i})">Edit</button><button class="btn-done" onclick="completeQuoted(${i})">Done</button><button class="btn-del" onclick="delItem('quoted',${i})">✕</button></div></td>
     </tr>`;}).join('');
 }
@@ -442,8 +544,11 @@ function renderParts(){
   const rows=data.parts.filter(r=>(!q||(r.wo_num+r.tech+r.part+(r.supplier||'')).toLowerCase().includes(q))&&(!tech||r.tech===tech));
   const tbody=document.getElementById('parts-body');
   if(!rows.length){renderEmpty('parts-body');return;}
-  tbody.innerHTML=rows.map(r=>{const i=data.parts.indexOf(r);return`<tr>
-    <td style="font-weight:500">${r.wo_num||'—'}</td><td>${r.tech||'—'}</td><td>${r.part||'—'}</td>
+  tbody.innerHTML=rows.map(r=>{const i=data.parts.indexOf(r);
+    const woMatch=r.wo_num&&data.wo.some(w=>w.wo_num===r.wo_num);
+    const woCell=woMatch?`<span class="wo-link" onclick="jumpToWO('${r.wo_num}')">${r.wo_num}</span>`:r.wo_num||'—';
+    return`<tr>
+    <td style="font-weight:500">${woCell}</td><td>${r.tech||'—'}</td><td>${r.part||'—'}</td>
     <td>${r.supplier||'—'}</td><td>${fmtDate(r.ordered)}</td><td class="${isOverdue(r.eta)?'overdue':''}">${fmtDate(r.eta)}</td>
     <td><div class="action-btns"><button class="btn-edit" onclick="openModal('parts',${i})">Edit</button><button class="btn-done" onclick="markDone('parts',${i})">In</button><button class="btn-del" onclick="delItem('parts',${i})">✕</button></div></td>
   </tr>`;}).join('');
@@ -456,11 +561,18 @@ function renderScheduled(){
   const rows=data.scheduled.filter(r=>(!q||(r.wo_num+r.tech+(r.customer||'')+(r.notes||'')).toLowerCase().includes(q))&&(!f||r.status===f)&&(!tech||r.tech===tech));
   const tbody=document.getElementById('scheduled-body');
   if(!rows.length){renderEmpty('scheduled-body');return;}
-  tbody.innerHTML=rows.map(r=>{const i=data.scheduled.indexOf(r);return`<tr>
-    <td style="font-weight:500">${r.wo_num||'—'}</td><td>${r.tech||'—'}</td><td>${r.customer||'—'}</td>
+  tbody.innerHTML=rows.map(r=>{const i=data.scheduled.indexOf(r);
+    const isRef=!!r._quoted_ref;
+    return`<tr>
+    <td style="font-weight:500">${r.wo_num||'—'}${isRef?'<span style="font-size:10px;color:#6b21a8;margin-left:4px">Q</span>':''}</td>
+    <td>${r.tech||'—'}</td><td>${r.customer||'—'}</td>
     <td>${r.type||'—'}</td><td>${badge(r.status)}</td><td class="${isOverdue(r.date)?'overdue':''}">${fmtDate(r.date)}</td>
     <td class="notes-cell" onclick="toggleNotes(this)" title="Click to expand">${r.notes||'—'}</td>
-    <td><div class="action-btns"><button class="btn-edit" onclick="openModal('scheduled',${i})">Edit</button><button class="btn-done" onclick="markDone('scheduled',${i})">Done</button><button class="btn-del" onclick="delItem('scheduled',${i})">✕</button></div></td>
+    <td><div class="action-btns">
+      ${isRef?'<span style="font-size:11px;color:#888;padding:0 4px">from Quote</span>':'<button class="btn-edit" onclick="openModal(\'scheduled\','+i+')">Edit</button>'}
+      <button class="btn-done" onclick="markDone('scheduled',${i})">Done</button>
+      <button class="btn-del" onclick="delItem('scheduled',${i})">✕</button>
+    </div></td>
   </tr>`;}).join('');
 }
 
@@ -500,7 +612,19 @@ function renderArchive(){
   </tr>`).join('');
 }
 
-// PM hrs toggle
+// ── Activity Log Modal ────────────────────────────────────
+function openLog(idx){
+  const wo=data.wo[idx];
+  const entries=(wo.log&&wo.log.length)?wo.log.map(e=>`<div class="log-entry"><span class="log-time">${e.ts}</span><span class="log-msg">${e.msg}</span></div>`).join(''):`<div class="log-empty">No activity logged yet.</div>`;
+  document.getElementById('log-modal-content').innerHTML=`
+    <h3>Activity Log — W/O #${wo.wo_num||'?'}</h3>
+    <div class="activity-log">${entries}</div>
+    <div class="modal-btns"><button class="btn-cancel" onclick="closeLogModal()">Close</button></div>`;
+  document.getElementById('log-modal-bg').classList.add('open');
+}
+function closeLogModal(){document.getElementById('log-modal-bg').classList.remove('open');}
+
+// ── PM hrs toggle ─────────────────────────────────────────
 function onTypeChange(){
   const t=document.getElementById('f-type');
   const pmRow=document.getElementById('pm-hrs-row');
@@ -614,18 +738,34 @@ function saveItem(type){
   if(type==='wo'){
     const isNew=editingIndex===null;
     const existing=isNew?{}:data.wo[editingIndex];
+    const prevStatus=existing.status||'';
+    const newStatus=g('f-status');
     item={
-      wo_num:g('f-wo_num'),tech:g('f-tech'),type:g('f-type'),status:g('f-status'),
+      wo_num:g('f-wo_num'),tech:g('f-tech'),type:g('f-type'),status:newStatus,
       due:g('f-due'),notes:g('f-notes'),pm_hrs:g('f-pm_hrs'),
       completed:gb('f-completed'),
-      created:existing.created||today()
+      created:existing.created||today(),
+      log:existing.log||[]
     };
+    // Log status changes
+    if(!isNew&&prevStatus&&prevStatus!==newStatus){
+      logActivity(item,`Status changed: ${prevStatus} → ${newStatus}`);
+    } else if(isNew){
+      logActivity(item,`W/O created`);
+    } else {
+      logActivity(item,`W/O updated`);
+    }
   }
-  else if(type==='quoted') item={wo_num:g('f-wo_num'),customer:g('f-customer'),type:g('f-type'),status:g('f-status'),hrs_quoted:g('f-hrs_quoted'),cost_quoted:g('f-cost_quoted'),date:g('f-date'),techs:getTechs_inputs(),notes:g('f-notes')};
+  else if(type==='quoted'){
+    item={wo_num:g('f-wo_num'),customer:g('f-customer'),type:g('f-type'),status:g('f-status'),hrs_quoted:g('f-hrs_quoted'),cost_quoted:g('f-cost_quoted'),date:g('f-date'),techs:getTechs_inputs(),notes:g('f-notes')};
+    // Sync to scheduled
+    syncQuotedToScheduled(item);
+  }
   else if(type==='parts') item={wo_num:g('f-wo_num'),tech:g('f-tech'),part:g('f-part'),supplier:g('f-supplier'),ordered:g('f-ordered'),eta:g('f-eta')};
   else if(type==='scheduled') item={wo_num:g('f-wo_num'),tech:g('f-tech'),customer:g('f-customer'),type:g('f-type'),status:g('f-status'),date:g('f-date'),notes:g('f-notes')};
   else if(type==='callbacks') item={customer:g('f-customer'),tech:g('f-tech'),flagged:g('f-flagged'),deadline:g('f-deadline'),reason:g('f-reason')};
   else if(type==='tasks') item={task:g('f-task'),category:g('f-category'),due:g('f-due'),notes:g('f-notes')};
+
   if(editingIndex!==null)data[type][editingIndex]=item;
   else data[type].push(item);
   updateStats();updateTechFilters();scheduleSave();closeModal();switchTab(type);
@@ -701,6 +841,8 @@ function finalizeQuoted(){
   const techStr=(job.techs||[]).filter(Boolean).join(', ')||'—';
   const label=`W/O #${job.wo_num} — ${job.customer||''} (${techStr}) — ${variance.toUpperCase()}`;
   data.archive.unshift({type:'quoted',label,date:today(),item:archived});
+  // Remove synced scheduled entry
+  removeSyncedScheduled(job.wo_num);
   data.quoted.splice(currentCompletingIdx,1);
   currentCompletingIdx=null;
   updateStats();updateTechFilters();scheduleSave();closeCompletionModal();switchTab('quoted');
@@ -714,7 +856,13 @@ function markDone(type,idx){
   data.archive.unshift({type,label:labels[type](item),date:today(),item});
   data[type].splice(idx,1);updateStats();updateTechFilters();scheduleSave();switchTab(type);
 }
-function delItem(type,idx){data[type].splice(idx,1);updateStats();updateTechFilters();scheduleSave();switchTab(type);}
+function delItem(type,idx){
+  if(type==='quoted'){
+    const wo_num=data.quoted[idx]?.wo_num;
+    if(wo_num)removeSyncedScheduled(wo_num);
+  }
+  data[type].splice(idx,1);updateStats();updateTechFilters();scheduleSave();switchTab(type);
+}
 function delArchive(idx){data.archive.splice(idx,1);scheduleSave();renderArchive();}
 
 function exportPDF(){
@@ -746,14 +894,11 @@ function exportPDF(){
     y+=5;doc.setTextColor(0);doc.setFont(undefined,'normal');doc.setFontSize(9);
   }
 
-  sectionHeader(`Open Work Orders (${data.wo.filter(r=>!r.completed).length})`);
   const openWOs=data.wo.filter(r=>!r.completed);
+  sectionHeader(`Open Work Orders (${openWOs.length})`);
   if(openWOs.length){
     tableHeader(['W/O #','Tech','Type','Status','Due','Age'],[22,28,18,50,20,colW-138]);
-    openWOs.forEach(r=>{
-      const age=calcAge(r.created);
-      row([r.wo_num,r.tech,r.type,r.status,fmtDate(r.due),age!==null?age+'d':'—'],[22,28,18,50,20,colW-138]);
-    });
+    openWOs.forEach(r=>{const age=calcAge(r.created);row([r.wo_num,r.tech,r.type,r.status,fmtDate(r.due),age!==null?age+'d':'—'],[22,28,18,50,20,colW-138]);});
   }else{doc.setTextColor(150);doc.text('No open work orders',margin,y);doc.setTextColor(0);y+=6;}
   y+=4;
 
@@ -796,6 +941,7 @@ function exportPDF(){
 
 document.getElementById('modal-bg').addEventListener('click',function(e){if(e.target===this)closeModal();});
 document.getElementById('completion-modal-bg').addEventListener('click',function(e){if(e.target===this)closeCompletionModal();});
+document.getElementById('log-modal-bg').addEventListener('click',function(e){if(e.target===this)closeLogModal();});
 </script>
 </body>
 </html>
