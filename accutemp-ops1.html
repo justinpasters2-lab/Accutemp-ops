@@ -93,7 +93,7 @@ tr:hover td{background:#fafafa}
 .age-old{background:#fce8e6;color:#a33b2e}
 .completed-row td{opacity:0.55;text-decoration:line-through}
 .completed-row td .action-btns,.completed-row td .badge{text-decoration:none}
-.synced-row td:first-child::after{content:' ↗';font-size:10px;color:#6b21a8;font-weight:600}
+.synced-row td:first-child::after{content:' \u2197';font-size:10px;color:#6b21a8;font-weight:600}
 .wo-link{color:#1a73e8;cursor:pointer;text-decoration:underline;font-weight:500}
 .wo-link:hover{color:#1557b0}
 .highlight-row td{background:#fffbcc!important;transition:background 1.5s}
@@ -163,6 +163,14 @@ tr:hover td{background:#fafafa}
 .customer-card-name{font-size:14px;font-weight:500}
 .customer-history{font-size:12px;color:#888;margin-top:4px}
 .customer-jobs{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+/* PDF Filter Modal */
+.pdf-filter-modal{width:480px}
+.pdf-filter-section{background:#f8f8f8;border-radius:8px;padding:14px;margin-bottom:12px;border:1px solid #e8e8e8}
+.pdf-filter-section h4{font-size:12px;font-weight:600;color:#666;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:10px}
+.pdf-filter-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.pdf-checkbox-group{display:flex;flex-direction:column;gap:6px}
+.pdf-checkbox-item{display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer}
+.pdf-checkbox-item input{width:14px;height:14px;cursor:pointer;accent-color:#1a73e8}
 </style>
 </head>
 <body>
@@ -181,7 +189,7 @@ tr:hover td{background:#fafafa}
       <div style="font-size:12px;color:#888;margin-top:2px" id="date-display"></div>
     </div>
     <div class="header-right">
-      <button class="btn-pdf" onclick="exportPDF()">⬇ Weekly PDF</button>
+      <button class="btn-pdf" onclick="openPDFModal()">&#8595; Export PDF</button>
       <span class="sync-status" id="sync-status"></span>
       <span class="user-info" id="user-info"></span>
       <button class="btn-signout" onclick="signOut()">Sign out</button>
@@ -190,9 +198,8 @@ tr:hover td{background:#fafafa}
 
   <div id="promoted-banner" class="promoted-banner"></div>
 
-  <!-- Global Search -->
   <div class="global-search-bar">
-    <span class="search-icon">🔍</span>
+    <span class="search-icon">&#128269;</span>
     <input type="text" id="global-search" placeholder="Global search across all tabs — W/O #, tech, customer, notes..." oninput="globalSearch()" onblur="setTimeout(()=>hideGlobalResults(),200)">
     <div class="global-results" id="global-results"></div>
   </div>
@@ -240,7 +247,7 @@ tr:hover td{background:#fafafa}
   <!-- Work Orders -->
   <div id="tab-wo" class="section">
     <div class="toolbar">
-      <input type="text" placeholder="Search tech, W/O #, notes..." id="wo-search" oninput="renderWO()">
+      <input type="text" placeholder="Search tech, W/O #, customer, notes..." id="wo-search" oninput="renderWO()">
       <select id="wo-tech-filter" onchange="renderWO()"><option value="">All techs</option></select>
       <select id="wo-filter" onchange="renderWO()">
         <option value="">All statuses</option>
@@ -250,7 +257,7 @@ tr:hover td{background:#fafafa}
       <button class="btn-add" onclick="openModal('wo',null)">+ Add W/O</button>
     </div>
     <table><thead><tr>
-      <th style="width:90px">W/O #</th><th style="width:100px">Tech</th><th style="width:80px">Type</th>
+      <th style="width:90px">W/O #</th><th style="width:100px">Tech</th><th style="width:120px">Customer</th><th style="width:80px">Type</th>
       <th style="width:160px">Status</th><th style="width:90px">Due</th><th style="width:50px">Age</th><th>Notes</th><th style="width:150px"></th>
     </tr></thead><tbody id="wo-body"></tbody></table>
   </div>
@@ -353,7 +360,7 @@ tr:hover td{background:#fafafa}
 
   <!-- Archive -->
   <div id="tab-archive" class="section">
-    <p style="font-size:13px;color:#888;margin-bottom:12px">Completed items — cleared from main board.</p>
+    <p style="font-size:13px;color:#888;margin-bottom:12px">Completed items cleared from main board.</p>
     <table><thead><tr>
       <th style="width:110px">Type</th><th>Item</th><th style="width:100px">Completed</th><th style="width:60px"></th>
     </tr></thead><tbody id="archive-body"></tbody></table>
@@ -363,6 +370,7 @@ tr:hover td{background:#fafafa}
 <div class="modal-bg" id="modal-bg"><div class="modal" id="modal-content"></div></div>
 <div class="modal-bg" id="completion-modal-bg"><div class="modal" id="completion-modal-content"></div></div>
 <div class="modal-bg" id="log-modal-bg"><div class="modal" id="log-modal-content"></div></div>
+<div class="modal-bg" id="pdf-modal-bg"><div class="modal pdf-filter-modal" id="pdf-modal-content"></div></div>
 
 <script>
 const CLIENT_ID='684471418257-d5013g7bv614s9ao4bm9t40h2pgjlalr.apps.googleusercontent.com';
@@ -397,7 +405,7 @@ async function loadFromDrive(){
       const fd=await fr.json();
       data=Object.assign({wo:[],quoted:[],parts:[],scheduled:[],callbacks:[],tasks:[],archive:[]},fd);
       setSync('saved','Loaded from Drive');
-    }else{setSync('saved','New file — ready');}
+    }else{setSync('saved','New file \u2014 ready');}
   }catch(e){setSync('error','Load failed');}
   autoPromoteScheduled();
   updateStats();updateTechFilters();renderBoard();
@@ -421,14 +429,12 @@ function isOverdue(d){if(!d)return false;return new Date(d)<new Date(new Date().
 function fmtCurrency(v){if(!v)return'\u2014';return'$'+parseFloat(v).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0});}
 function today(){return new Date().toISOString().split('T')[0];}
 function nowTs(){return new Date().toLocaleString('en-US',{month:'numeric',day:'numeric',year:'2-digit',hour:'numeric',minute:'2-digit',hour12:true});}
-
 function calcAge(created){if(!created)return null;return Math.floor((new Date()-new Date(created))/(1000*60*60*24));}
 function ageBadge(created){
   const d=calcAge(created);if(d===null)return'';
   const cls=d<=3?'age-fresh':d<=7?'age-warn':'age-old';
   return`<span class="age-badge ${cls}">${d}d</span>`;
 }
-
 function logActivity(wo,msg){if(!wo.log)wo.log=[];wo.log.unshift({ts:nowTs(),msg});}
 
 const SYNC_STATUSES=['Scheduled','Approved - Awaiting Parts'];
@@ -450,7 +456,7 @@ function autoPromoteScheduled(){
     if(s.status==='Scheduled'&&s.date&&s.date<=todayStr){
       const exists=data.wo.some(w=>w.wo_num===s.wo_num);
       if(!exists){
-        data.wo.push({wo_num:s.wo_num,tech:s.tech,type:s.type,status:'In Progress',due:'',notes:s.notes||'',pm_hrs:'',completed:false,created:today(),log:[{ts:nowTs(),msg:`Auto-promoted from Scheduled Jobs (was scheduled ${fmtDate(s.date)})`}]});
+        data.wo.push({wo_num:s.wo_num,tech:s.tech,customer:s.customer||'',type:s.type,status:'In Progress',due:'',notes:s.notes||'',pm_hrs:'',completed:false,created:today(),log:[{ts:nowTs(),msg:`Auto-promoted from Scheduled Jobs (was scheduled ${fmtDate(s.date)})`}]});
         promoted.push(s.wo_num||'unknown');
       }
       return false;
@@ -537,57 +543,51 @@ function jumpToWO(wo_num){
   },100);
 }
 
-// ── Global Search ─────────────────────────────────────────
+// Global Search
 function globalSearch(){
   const q=(document.getElementById('global-search').value||'').toLowerCase().trim();
   const el=document.getElementById('global-results');
   if(q.length<2){el.classList.remove('show');return;}
   const results=[];
   const seenWO=new Set();
-
   data.wo.forEach(r=>{
-    if((r.wo_num+r.tech+(r.notes||'')+r.type).toLowerCase().includes(q)){
+    if((r.wo_num+r.tech+(r.customer||'')+(r.notes||'')+r.type).toLowerCase().includes(q)){
       if(r.wo_num)seenWO.add(r.wo_num);
-      results.push({label:`W/O #${r.wo_num} \u2014 ${r.tech}`,sub:`${r.type} \u00b7 ${r.status}`,tab:'wo',src:'WO'});
+      results.push({label:`W/O #${r.wo_num} \u2014 ${r.customer||r.tech}`,sub:`${r.type} \u00b7 ${r.status}`,tab:'wo',src:'WO'});
     }
   });
-
   data.quoted.forEach(r=>{
     if((r.wo_num+(r.customer||'')+(r.techs||[]).join(' ')).toLowerCase().includes(q)){
       if(r.wo_num)seenWO.add(r.wo_num);
       results.push({label:`W/O #${r.wo_num} \u2014 ${r.customer||''}`,sub:`Quoted \u00b7 ${r.status}`,tab:'quoted',src:'Quoted'});
     }
   });
-
   data.scheduled.forEach(r=>{
     if((r.wo_num+r.tech+(r.customer||'')).toLowerCase().includes(q)){
       if(r.wo_num&&seenWO.has(r.wo_num))return;
       results.push({label:`W/O #${r.wo_num} \u2014 ${r.customer||''}`,sub:`Scheduled \u00b7 ${fmtDate(r.date)}`,tab:'scheduled',src:'Sched'});
     }
   });
-
   data.parts.forEach(r=>{if((r.wo_num+r.tech+(r.part||'')).toLowerCase().includes(q))results.push({label:`${r.part} \u2014 W/O #${r.wo_num}`,sub:`Parts \u00b7 ETA ${fmtDate(r.eta)}`,tab:'parts',src:'Parts'});});
   data.callbacks.forEach(r=>{if((r.customer+r.tech+(r.reason||'')).toLowerCase().includes(q))results.push({label:`Callback: ${r.customer}`,sub:`Tech: ${r.tech}`,tab:'callbacks',src:'CB'});});
   data.tasks.forEach(r=>{if((r.task+(r.notes||'')).toLowerCase().includes(q))results.push({label:r.task,sub:`Task \u00b7 ${r.category||''}`,tab:'tasks',src:'Task'});});
-
   if(!results.length){el.innerHTML=`<div class="global-result-item" style="color:#aaa">No results found</div>`;el.classList.add('show');return;}
   el.innerHTML=results.slice(0,10).map(r=>`<div class="global-result-item" onclick="switchTab('${r.tab}');hideGlobalResults()"><span class="global-result-type">${r.src}</span><span class="global-result-main">${r.label}</span><div class="global-result-sub">${r.sub}</div></div>`).join('');
   el.classList.add('show');
 }
 function hideGlobalResults(){document.getElementById('global-results').classList.remove('show');}
 
-// ── Board View ────────────────────────────────────────────
+// Board View
 function renderBoard(){
   const q=(document.getElementById('board-search').value||'').toLowerCase();
   const tech=document.getElementById('board-tech-filter').value;
   const typeF=document.getElementById('board-type-filter').value;
   const rows=[];
-
   data.wo.filter(r=>!r.completed).forEach(r=>{
     const techMatch=!tech||r.tech===tech;
     const typeMatch=!typeF||r.type===typeF;
-    const textMatch=!q||(r.wo_num+r.tech+(r.notes||'')+r.type).toLowerCase().includes(q);
-    if(techMatch&&typeMatch&&textMatch)rows.push({wo_num:r.wo_num,tech:r.tech,customer:'\u2014',type:r.type,status:r.status,date:r.due,created:r.created,src:'WO'});
+    const textMatch=!q||(r.wo_num+r.tech+(r.customer||'')+(r.notes||'')+r.type).toLowerCase().includes(q);
+    if(techMatch&&typeMatch&&textMatch)rows.push({wo_num:r.wo_num,tech:r.tech,customer:r.customer||'\u2014',type:r.type,status:r.status,date:r.due,created:r.created,src:'WO'});
   });
   data.quoted.forEach(r=>{
     const techStr=(r.techs||[]).filter(Boolean).join(', ');
@@ -602,28 +602,25 @@ function renderBoard(){
     const textMatch=!q||(r.wo_num+r.tech+(r.customer||'')+r.type).toLowerCase().includes(q);
     if(techMatch&&typeMatch&&textMatch)rows.push({wo_num:r.wo_num,tech:r.tech,customer:r.customer||'\u2014',type:r.type,status:r.status,date:r.date,created:null,src:'Sched'});
   });
-
   const tbody=document.getElementById('board-body');
   if(!rows.length){tbody.innerHTML=`<tr><td colspan="8" class="empty">No open jobs</td></tr>`;return;}
   tbody.innerHTML=rows.map(r=>`<tr>
-    <td style="font-weight:500">${r.wo_num||'\u2014'}</td>
-    <td>${r.tech||'\u2014'}</td>
-    <td>${r.customer}</td>
-    <td>${typeBadge(r.type)}</td>
-    <td>${badge(r.status)}</td>
+    <td style="font-weight:500">${r.wo_num||'\u2014'}</td><td>${r.tech||'\u2014'}</td>
+    <td>${r.customer}</td><td>${typeBadge(r.type)}</td><td>${badge(r.status)}</td>
     <td class="${isOverdue(r.date)?'overdue':''}">${fmtDate(r.date)}</td>
     <td>${r.created?ageBadge(r.created):'\u2014'}</td>
     <td><span class="board-source-tag src-${r.src.toLowerCase()}">${r.src}</span></td>
   </tr>`).join('');
 }
 
+// Work Orders — now with Customer column
 function renderWO(){
   const q=(document.getElementById('wo-search').value||'').toLowerCase();
   const f=document.getElementById('wo-filter').value;
   const tech=document.getElementById('wo-tech-filter').value;
-  const rows=data.wo.filter(r=>(!q||(r.wo_num+r.tech+(r.notes||'')+r.type).toLowerCase().includes(q))&&(!f||r.status===f)&&(!tech||r.tech===tech));
+  const rows=data.wo.filter(r=>(!q||(r.wo_num+r.tech+(r.customer||'')+(r.notes||'')+r.type).toLowerCase().includes(q))&&(!f||r.status===f)&&(!tech||r.tech===tech));
   const tbody=document.getElementById('wo-body');
-  if(!rows.length){renderEmpty('wo-body',8);return;}
+  if(!rows.length){renderEmpty('wo-body',9);return;}
   tbody.innerHTML=rows.map(r=>{
     const i=data.wo.indexOf(r);
     const rowCls=r.completed?'completed-row':'';
@@ -631,6 +628,7 @@ function renderWO(){
     const logCount=(r.log&&r.log.length)?`<span style="font-size:10px;color:#6b21a8;margin-left:3px">(${r.log.length})</span>`:'';
     return`<tr class="${rowCls}">
       <td style="font-weight:500">${r.wo_num||'\u2014'}</td><td>${r.tech||'\u2014'}</td>
+      <td>${r.customer||'\u2014'}</td>
       <td>${r.type||'\u2014'}${pmHrs}</td><td>${badge(r.status)}</td>
       <td class="${isOverdue(r.due)&&!r.completed?'overdue':''}">${fmtDate(r.due)}</td>
       <td>${ageBadge(r.created)}</td>
@@ -731,7 +729,6 @@ function renderTasks(){
   </tr>`;}).join('');
 }
 
-// ── Scoreboard ────────────────────────────────────────────
 function renderScoreboard(){
   const techs=getAllTechs();
   const grid=document.getElementById('scoreboard-grid');
@@ -755,12 +752,11 @@ function renderScoreboard(){
   }).join('');
 }
 
-// ── PM Tracker ────────────────────────────────────────────
 function renderPMTracker(){
   const q=(document.getElementById('pm-search').value||'').toLowerCase();
   const tech=document.getElementById('pm-tech-filter').value;
   const pmJobs=[
-    ...data.wo.filter(r=>r.type==='PM'&&!r.completed).map(r=>({wo_num:r.wo_num,tech:r.tech,customer:r.notes||'',status:r.status,date:r.due,hrs:r.pm_hrs,src:'WO'})),
+    ...data.wo.filter(r=>r.type==='PM'&&!r.completed).map(r=>({wo_num:r.wo_num,tech:r.tech,customer:r.customer||r.notes||'',status:r.status,date:r.due,hrs:r.pm_hrs,src:'WO'})),
     ...data.quoted.filter(r=>r.type==='PM').map(r=>({wo_num:r.wo_num,tech:(r.techs||[]).filter(Boolean).join(', '),customer:r.customer||'',status:r.status,date:r.date,hrs:r.hrs_quoted,src:'Quoted'})),
     ...data.scheduled.filter(r=>r.type==='PM').map(r=>({wo_num:r.wo_num,tech:r.tech,customer:r.customer||'',status:r.status,date:r.date,hrs:'',src:'Sched'}))
   ].filter(r=>(!q||(r.wo_num+r.tech+r.customer).toLowerCase().includes(q))&&(!tech||r.tech===tech||r.tech.includes(tech)));
@@ -776,19 +772,18 @@ function renderPMTracker(){
     </div>
     <div class="pm-card-tech">Tech: ${r.tech||'\u2014'}</div>
     <div class="pm-card-meta">
-      ${r.date?`<span class="pm-meta-item ${isOverdue(r.date)?'overdue':''}">📅 ${fmtDate(r.date)}</span>`:''}
-      ${r.hrs?`<span class="pm-meta-item">⏱ ${r.hrs}h</span>`:''}
+      ${r.date?`<span class="pm-meta-item ${isOverdue(r.date)?'overdue':''}">&#128197; ${fmtDate(r.date)}</span>`:''}
+      ${r.hrs?`<span class="pm-meta-item">&#9203; ${r.hrs}h</span>`:''}
       <span class="pm-meta-item">${r.src}</span>
     </div>
   </div>`).join('');
 }
 
-// ── Customer Database ─────────────────────────────────────
+// Customer Database
 function renderCustomers(){
   const q=(document.getElementById('customers-search').value||'').toLowerCase();
   const STATUS_RANK={'In Progress':5,'Approved - Awaiting Parts':4,'Scheduled':3,'On Hold':2,'Quoted':1};
   const woMap={};
-
   const addOrUpdate=(wo_num,customer,status,date,tab)=>{
     if(!wo_num||!customer||customer==='\u2014')return;
     const rank=STATUS_RANK[status]||0;
@@ -796,43 +791,33 @@ function renderCustomers(){
       woMap[wo_num]={wo_num,customer,status,date,tab};
     }
   };
-
+  data.wo.filter(r=>r.customer).forEach(r=>addOrUpdate(r.wo_num,r.customer,r.status,r.due,'wo'));
   data.quoted.forEach(r=>addOrUpdate(r.wo_num,r.customer,r.status,r.date,'quoted'));
   data.scheduled.forEach(r=>addOrUpdate(r.wo_num,r.customer,r.status,r.date,'scheduled'));
-
   data.callbacks.forEach(r=>{
     if(!r.customer||r.customer==='\u2014')return;
     const key='cb-'+r.customer;
     if(!woMap[key])woMap[key]={wo_num:null,customer:r.customer,status:'Callback',date:r.deadline,tab:'callbacks',isCallback:true};
   });
-
   const customerMap={};
   Object.values(woMap).forEach(entry=>{
     const key=entry.customer.toLowerCase();
     if(!customerMap[key])customerMap[key]={name:entry.customer,open:[],completed:[]};
     customerMap[key].open.push(entry);
   });
-
   data.archive.forEach(r=>{
     if(!r.item||!r.item.customer)return;
     const key=r.item.customer.toLowerCase();
     if(!customerMap[key])customerMap[key]={name:r.item.customer,open:[],completed:[]};
     customerMap[key].completed.push({wo_num:r.item.wo_num,label:r.label,date:r.date});
   });
-
   const list=document.getElementById('customers-list');
-  const entries=Object.values(customerMap)
-    .filter(c=>!q||c.name.toLowerCase().includes(q))
-    .sort((a,b)=>a.name.localeCompare(b.name));
-
-  if(!entries.length){list.innerHTML=`<div class="empty">No customer data found. Customer names are pulled from Quoted Jobs, Scheduled Jobs, and Callbacks.</div>`;return;}
-
+  const entries=Object.values(customerMap).filter(c=>!q||c.name.toLowerCase().includes(q)).sort((a,b)=>a.name.localeCompare(b.name));
+  if(!entries.length){list.innerHTML=`<div class="empty">No customer data found.</div>`;return;}
   list.innerHTML=entries.map(c=>{
     const totalJobs=c.open.length+c.completed.length;
     const openBadges=c.open.map(j=>{
-      if(j.isCallback){
-        return`<span class="badge badge-callback" style="cursor:pointer" onclick="switchTab('callbacks')">Callback${j.date?' \u00b7 '+fmtDate(j.date):''}</span>`;
-      }
+      if(j.isCallback)return`<span class="badge badge-callback" style="cursor:pointer" onclick="switchTab('callbacks')">Callback${j.date?' \u00b7 '+fmtDate(j.date):''}</span>`;
       const statusClass=j.status==='Scheduled'?'badge-scheduled':j.status==='In Progress'?'badge-progress':j.status==='Approved - Awaiting Parts'?'badge-approved':'badge-quoted';
       return`<span class="badge ${statusClass}" style="cursor:pointer" onclick="switchTab('${j.tab}')">W/O #${j.wo_num} \u00b7 ${j.status}${j.date?' \u00b7 '+fmtDate(j.date):''}</span>`;
     }).join('');
@@ -863,7 +848,7 @@ function renderArchive(){
   </tr>`).join('');
 }
 
-// ── Activity Log ──────────────────────────────────────────
+// Activity Log
 function openLog(idx){
   const wo=data.wo[idx];
   const entries=(wo.log&&wo.log.length)?wo.log.map(e=>`<div class="log-entry"><span class="log-time">${e.ts}</span><span class="log-msg">${e.msg}</span></div>`).join(''):`<div class="log-empty">No activity logged yet.</div>`;
@@ -888,6 +873,7 @@ function getModalHTML(type,item){
     <div class="form-grid">
       <div class="form-row"><label>W/O Number</label><input id="f-wo_num" value="${v('wo_num')}" placeholder="e.g. 10432"></div>
       <div class="form-row"><label>Tech Name</label><input id="f-tech" value="${v('tech')}" placeholder="e.g. Mike"></div>
+      <div class="form-row"><label>Customer / Site</label><input id="f-customer" value="${v('customer')}" placeholder="e.g. Bedford HS"></div>
       <div class="form-row"><label>Job Type</label><select id="f-type" onchange="onTypeChange()">${sel('type',['Service','PM','Install','Quoted'])}</select></div>
       <div class="form-row"><label>Status</label><select id="f-status">${sel('status',['In Progress','Waiting on Parts','Waiting on Customer','Needs Follow-up','Needs Quote'])}</select></div>
       <div class="form-row"><label>Expected Close</label><input type="date" id="f-due" value="${v('due')}"></div>
@@ -967,7 +953,7 @@ function saveItem(type){
   if(type==='wo'){
     const isNew=editingIndex===null;const existing=isNew?{}:data.wo[editingIndex];
     const prevStatus=existing.status||'';const newStatus=g('f-status');
-    item={wo_num:g('f-wo_num'),tech:g('f-tech'),type:g('f-type'),status:newStatus,due:g('f-due'),notes:g('f-notes'),pm_hrs:g('f-pm_hrs'),completed:gb('f-completed'),created:existing.created||today(),log:existing.log||[]};
+    item={wo_num:g('f-wo_num'),tech:g('f-tech'),customer:g('f-customer'),type:g('f-type'),status:newStatus,due:g('f-due'),notes:g('f-notes'),pm_hrs:g('f-pm_hrs'),completed:gb('f-completed'),created:existing.created||today(),log:existing.log||[]};
     if(!isNew&&prevStatus&&prevStatus!==newStatus)logActivity(item,`Status changed: ${prevStatus} \u2192 ${newStatus}`);
     else if(isNew)logActivity(item,`W/O created`);
     else logActivity(item,`W/O updated`);
@@ -1042,7 +1028,7 @@ function closeCompletionModal(){document.getElementById('completion-modal-bg').c
 
 function markDone(type,idx){
   const item=data[type][idx];
-  const labels={wo:r=>`W/O #${r.wo_num} \u2014 ${r.tech}`,parts:r=>`${r.part} (W/O #${r.wo_num})`,scheduled:r=>`${r.customer||''} \u2014 W/O #${r.wo_num}`,callbacks:r=>`Callback: ${r.customer}`,tasks:r=>r.task};
+  const labels={wo:r=>`W/O #${r.wo_num} \u2014 ${r.customer||r.tech}`,parts:r=>`${r.part} (W/O #${r.wo_num})`,scheduled:r=>`${r.customer||''} \u2014 W/O #${r.wo_num}`,callbacks:r=>`Callback: ${r.customer}`,tasks:r=>r.task};
   data.archive.unshift({type,label:labels[type](item),date:today(),item});
   data[type].splice(idx,1);updateStats();updateTechFilters();scheduleSave();switchTab(type);
 }
@@ -1052,39 +1038,134 @@ function delItem(type,idx){
 }
 function delArchive(idx){data.archive.splice(idx,1);scheduleSave();renderArchive();}
 
+// ── PDF Export with Filters ───────────────────────────────
+function openPDFModal(){
+  const techs=getAllTechs();
+  const techOpts=techs.map(t=>`<option value="${t}">${t}</option>`).join('');
+  document.getElementById('pdf-modal-content').innerHTML=`
+    <h3>Export PDF Report</h3>
+    <div class="pdf-filter-section">
+      <h4>Sections to Include</h4>
+      <div class="pdf-checkbox-group">
+        <label class="pdf-checkbox-item"><input type="checkbox" id="pf-wo" checked> Work Orders</label>
+        <label class="pdf-checkbox-item"><input type="checkbox" id="pf-quoted" checked> Quoted Jobs</label>
+        <label class="pdf-checkbox-item"><input type="checkbox" id="pf-parts" checked> Parts Pipeline</label>
+        <label class="pdf-checkbox-item"><input type="checkbox" id="pf-scheduled" checked> Scheduled Jobs</label>
+        <label class="pdf-checkbox-item"><input type="checkbox" id="pf-callbacks" checked> Callbacks</label>
+        <label class="pdf-checkbox-item"><input type="checkbox" id="pf-tasks" checked> My Tasks</label>
+      </div>
+    </div>
+    <div class="pdf-filter-section">
+      <h4>Filters</h4>
+      <div class="pdf-filter-grid">
+        <div class="form-row"><label>Tech</label>
+          <select id="pf-tech"><option value="">All Techs</option>${techOpts}</select>
+        </div>
+        <div class="form-row"><label>Job Type</label>
+          <select id="pf-type"><option value="">All Types</option><option>Service</option><option>PM</option><option>Install</option><option>Quoted</option></select>
+        </div>
+        <div class="form-row"><label>Date From</label><input type="date" id="pf-date-from"></div>
+        <div class="form-row"><label>Date To</label><input type="date" id="pf-date-to"></div>
+      </div>
+    </div>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closePDFModal()">Cancel</button>
+      <button class="btn-save" onclick="exportPDF()">Generate PDF</button>
+    </div>`;
+  document.getElementById('pdf-modal-bg').classList.add('open');
+}
+function closePDFModal(){document.getElementById('pdf-modal-bg').classList.remove('open');}
+
 function exportPDF(){
-  const {jsPDF}=window.jspdf;const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  const inclWO=document.getElementById('pf-wo')?.checked!==false;
+  const inclQuoted=document.getElementById('pf-quoted')?.checked!==false;
+  const inclParts=document.getElementById('pf-parts')?.checked!==false;
+  const inclScheduled=document.getElementById('pf-scheduled')?.checked!==false;
+  const inclCallbacks=document.getElementById('pf-callbacks')?.checked!==false;
+  const inclTasks=document.getElementById('pf-tasks')?.checked!==false;
+  const fTech=document.getElementById('pf-tech')?.value||'';
+  const fType=document.getElementById('pf-type')?.value||'';
+  const fDateFrom=document.getElementById('pf-date-from')?.value||'';
+  const fDateTo=document.getElementById('pf-date-to')?.value||'';
+
+  const inDateRange=(d)=>{
+    if(!d)return true;
+    if(fDateFrom&&d<fDateFrom)return false;
+    if(fDateTo&&d>fDateTo)return false;
+    return true;
+  };
+  const techMatch=(tech)=>!fTech||tech===fTech||(tech||'').includes(fTech);
+  const typeMatch=(type)=>!fType||type===fType;
+
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
   const now=new Date();let y=15;const pageW=210,margin=14,colW=pageW-margin*2;
-  doc.setFontSize(16);doc.setFont(undefined,'bold');doc.text('Accutemp Weekly Ops Report',margin,y);y+=7;
-  doc.setFontSize(10);doc.setFont(undefined,'normal');doc.setTextColor(100);doc.text(`Week of ${now.toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})}`,margin,y);y+=10;doc.setTextColor(0);
+
+  doc.setFontSize(16);doc.setFont(undefined,'bold');doc.text('Accutemp Ops Report',margin,y);y+=7;
+  doc.setFontSize(10);doc.setFont(undefined,'normal');doc.setTextColor(100);
+  let subtitle=`Generated ${now.toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})}`;
+  if(fTech)subtitle+=` \u2014 Tech: ${fTech}`;
+  if(fType)subtitle+=` \u2014 Type: ${fType}`;
+  if(fDateFrom||fDateTo)subtitle+=` \u2014 ${fDateFrom?fmtDate(fDateFrom):'start'} to ${fDateTo?fmtDate(fDateTo):'today'}`;
+  doc.text(subtitle,margin,y);y+=10;doc.setTextColor(0);
+
   function sH(title){doc.setFillColor(245,245,243);doc.rect(margin,y-4,colW,7,'F');doc.setFont(undefined,'bold');doc.setFontSize(11);doc.text(title,margin,y);y+=7;doc.setFont(undefined,'normal');doc.setFontSize(9);}
-  function row(cells,widths){let x=margin;cells.forEach((c,i)=>{doc.text(String(c||'\u2014').substring(0,30),x,y);x+=widths[i];});y+=5;if(y>270){doc.addPage();y=15;}}
+  function row(cells,widths){let x=margin;cells.forEach((c)=>{doc.text(String(c||'\u2014').substring(0,28),x,y);x+=widths[widths.indexOf(widths[cells.indexOf(c)])];});y+=5;if(y>270){doc.addPage();y=15;}}
+  function rowW(cells,widths){let x=margin;for(let i=0;i<cells.length;i++){doc.text(String(cells[i]||'\u2014').substring(0,28),x,y);x+=widths[i];}y+=5;if(y>270){doc.addPage();y=15;}}
   function tH(cols,widths){doc.setFont(undefined,'bold');doc.setFontSize(8);doc.setTextColor(100);let x=margin;cols.forEach((c,i)=>{doc.text(c,x,y);x+=widths[i];});y+=5;doc.setTextColor(0);doc.setFont(undefined,'normal');doc.setFontSize(9);}
-  const openWOs=data.wo.filter(r=>!r.completed);
-  sH(`Open Work Orders (${openWOs.length})`);
-  if(openWOs.length){tH(['W/O #','Tech','Type','Status','Due','Age'],[22,28,18,50,20,colW-138]);openWOs.forEach(r=>{const age=calcAge(r.created);row([r.wo_num,r.tech,r.type,r.status,fmtDate(r.due),age!==null?age+'d':'\u2014'],[22,28,18,50,20,colW-138]);});}
-  else{doc.setTextColor(150);doc.text('No open work orders',margin,y);doc.setTextColor(0);y+=6;}y+=4;
-  sH(`Quoted Jobs (${data.quoted.length})`);
-  if(data.quoted.length){tH(['W/O #','Customer','Techs','Hrs Q','Cost Q','Status'],[22,45,35,15,25,colW-142]);data.quoted.forEach(r=>row([r.wo_num,r.customer,(r.techs||[]).filter(Boolean).join(', '),r.hrs_quoted,r.cost_quoted?'$'+parseInt(r.cost_quoted).toLocaleString():'\u2014',r.status],[22,45,35,15,25,colW-142]));}
-  else{doc.setTextColor(150);doc.text('No quoted jobs',margin,y);doc.setTextColor(0);y+=6;}y+=4;
-  sH(`Parts Pipeline (${data.parts.length})`);
-  if(data.parts.length){tH(['W/O #','Tech','Part','Supplier','ETA'],[22,28,55,28,colW-133]);data.parts.forEach(r=>row([r.wo_num,r.tech,r.part,r.supplier,fmtDate(r.eta)],[22,28,55,28,colW-133]));}
-  else{doc.setTextColor(150);doc.text('No parts pending',margin,y);doc.setTextColor(0);y+=6;}y+=4;
-  sH(`Scheduled Jobs (${data.scheduled.length})`);
-  if(data.scheduled.length){tH(['W/O #','Tech','Customer','Type','Status','Date'],[22,28,40,20,45,colW-155]);data.scheduled.forEach(r=>row([r.wo_num,r.tech,r.customer,r.type,r.status,fmtDate(r.date)],[22,28,40,20,45,colW-155]));}
-  else{doc.setTextColor(150);doc.text('No scheduled jobs',margin,y);doc.setTextColor(0);y+=6;}y+=4;
-  sH(`Callbacks (${data.callbacks.length})`);
-  if(data.callbacks.length){tH(['Customer','Tech','Deadline'],[60,40,colW-100]);data.callbacks.forEach(r=>row([r.customer,r.tech,fmtDate(r.deadline)],[60,40,colW-100]));}
-  else{doc.setTextColor(150);doc.text('No callbacks',margin,y);doc.setTextColor(0);y+=6;}y+=4;
-  sH(`My Tasks (${data.tasks.length})`);
-  if(data.tasks.length){tH(['Task','Category','Due'],[80,35,colW-115]);data.tasks.forEach(r=>row([r.task,r.category,fmtDate(r.due)],[80,35,colW-115]));}
-  else{doc.setTextColor(150);doc.text('No tasks',margin,y);doc.setTextColor(0);y+=6;}
-  doc.save(`Accutemp-Ops-${now.toISOString().split('T')[0]}.pdf`);
+
+  if(inclWO){
+    const rows=data.wo.filter(r=>!r.completed&&techMatch(r.tech)&&typeMatch(r.type)&&inDateRange(r.due));
+    sH(`Work Orders (${rows.length})`);
+    if(rows.length){tH(['W/O #','Customer','Tech','Type','Status','Due','Age'],[22,38,24,16,44,20,colW-164]);rows.forEach(r=>{const age=calcAge(r.created);rowW([r.wo_num,r.customer||'\u2014',r.tech,r.type,r.status,fmtDate(r.due),age!==null?age+'d':'\u2014'],[22,38,24,16,44,20,colW-164]);});}
+    else{doc.setTextColor(150);doc.text('No matching work orders',margin,y);doc.setTextColor(0);y+=6;}
+    y+=4;
+  }
+  if(inclQuoted){
+    const rows=data.quoted.filter(r=>techMatch((r.techs||[]).join(','))&&typeMatch(r.type)&&inDateRange(r.date));
+    sH(`Quoted Jobs (${rows.length})`);
+    if(rows.length){tH(['W/O #','Customer','Techs','Hrs Q','Cost Q','Status'],[22,40,32,15,25,colW-134]);rows.forEach(r=>rowW([r.wo_num,r.customer,(r.techs||[]).filter(Boolean).join(', '),r.hrs_quoted,r.cost_quoted?'$'+parseInt(r.cost_quoted).toLocaleString():'\u2014',r.status],[22,40,32,15,25,colW-134]));}
+    else{doc.setTextColor(150);doc.text('No matching quoted jobs',margin,y);doc.setTextColor(0);y+=6;}
+    y+=4;
+  }
+  if(inclParts){
+    const rows=data.parts.filter(r=>techMatch(r.tech)&&inDateRange(r.eta));
+    sH(`Parts Pipeline (${rows.length})`);
+    if(rows.length){tH(['W/O #','Tech','Part','Supplier','ETA'],[22,28,55,28,colW-133]);rows.forEach(r=>rowW([r.wo_num,r.tech,r.part,r.supplier,fmtDate(r.eta)],[22,28,55,28,colW-133]));}
+    else{doc.setTextColor(150);doc.text('No matching parts',margin,y);doc.setTextColor(0);y+=6;}
+    y+=4;
+  }
+  if(inclScheduled){
+    const rows=data.scheduled.filter(r=>techMatch(r.tech)&&typeMatch(r.type)&&inDateRange(r.date));
+    sH(`Scheduled Jobs (${rows.length})`);
+    if(rows.length){tH(['W/O #','Tech','Customer','Type','Status','Date'],[22,28,40,20,45,colW-155]);rows.forEach(r=>rowW([r.wo_num,r.tech,r.customer,r.type,r.status,fmtDate(r.date)],[22,28,40,20,45,colW-155]));}
+    else{doc.setTextColor(150);doc.text('No matching scheduled jobs',margin,y);doc.setTextColor(0);y+=6;}
+    y+=4;
+  }
+  if(inclCallbacks){
+    const rows=data.callbacks.filter(r=>techMatch(r.tech)&&inDateRange(r.deadline));
+    sH(`Callbacks (${rows.length})`);
+    if(rows.length){tH(['Customer','Tech','Deadline'],[60,40,colW-100]);rows.forEach(r=>rowW([r.customer,r.tech,fmtDate(r.deadline)],[60,40,colW-100]));}
+    else{doc.setTextColor(150);doc.text('No matching callbacks',margin,y);doc.setTextColor(0);y+=6;}
+    y+=4;
+  }
+  if(inclTasks){
+    const rows=data.tasks.filter(r=>inDateRange(r.due));
+    sH(`My Tasks (${rows.length})`);
+    if(rows.length){tH(['Task','Category','Due'],[80,35,colW-115]);rows.forEach(r=>rowW([r.task,r.category,fmtDate(r.due)],[80,35,colW-115]));}
+    else{doc.setTextColor(150);doc.text('No matching tasks',margin,y);doc.setTextColor(0);y+=6;}
+  }
+
+  const datePart=now.toISOString().split('T')[0];
+  const techPart=fTech?`-${fTech}`:'';
+  doc.save(`Accutemp-Ops${techPart}-${datePart}.pdf`);
+  closePDFModal();
 }
 
 document.getElementById('modal-bg').addEventListener('click',function(e){if(e.target===this)closeModal();});
 document.getElementById('completion-modal-bg').addEventListener('click',function(e){if(e.target===this)closeCompletionModal();});
 document.getElementById('log-modal-bg').addEventListener('click',function(e){if(e.target===this)closeLogModal();});
+document.getElementById('pdf-modal-bg').addEventListener('click',function(e){if(e.target===this)closePDFModal();});
 </script>
 </body>
 </html>
