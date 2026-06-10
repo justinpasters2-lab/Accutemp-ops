@@ -143,13 +143,26 @@ tr:hover td{background:#fafafa}
 .src-wo{background:#e8f0fe;color:#1557b0}
 .src-quoted{background:#f3e8fd;color:#6b21a8}
 .src-scheduled{background:#e3f2fd;color:#1565c0}
-.scoreboard-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-top:4px}
+.src-sched{background:#e3f2fd;color:#1565c0}
+.scoreboard-grid{display:flex;flex-direction:column;gap:12px;margin-top:4px}
 .score-card{background:white;border:1px solid #e8e8e8;border-radius:8px;padding:14px}
 .score-card-name{font-size:14px;font-weight:500;margin-bottom:8px}
 .score-row{display:flex;justify-content:space-between;font-size:12px;padding:3px 0;border-bottom:1px solid #f5f5f3}
 .score-row:last-child{border-bottom:none}
 .score-label{color:#888}
 .score-val{font-weight:500}
+.score-card-v2{background:white;border:1px solid #e8e8e8;border-radius:8px;padding:16px}
+.score-card-v2-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid #f0f0f0;flex-wrap:wrap;gap:6px}
+.score-card-v2-name{font-size:15px;font-weight:600}
+.score-summary{display:flex;gap:6px;flex-wrap:wrap}
+.score-pill{font-size:11px;padding:2px 8px;border-radius:10px;background:#f5f5f3;color:#555;font-weight:500}
+.score-pill-red{background:#fce8e6;color:#a33b2e}
+.score-pill-green{background:#e6f4ea;color:#1e6e3b}
+.score-section-label{font-size:10px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:0.05em;margin:10px 0 4px}
+.score-inner-table{width:100%;border-collapse:collapse;font-size:12px}
+.score-inner-table th{text-align:left;font-size:10px;color:#aaa;padding:3px 6px;border-bottom:1px solid #f0f0f0;font-weight:500;text-transform:uppercase;letter-spacing:0.03em}
+.score-inner-table td{padding:5px 6px;border-bottom:1px solid #f8f8f8;vertical-align:middle}
+.score-inner-table tr:last-child td{border-bottom:none}
 .pm-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;margin-top:4px}
 .pm-card{background:white;border:1px solid #e8e8e8;border-radius:8px;padding:14px}
 .pm-card-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}
@@ -229,9 +242,9 @@ tr:hover td{background:#fafafa}
       <select id="board-type-filter" onchange="renderBoard()"><option value="">All types</option><option>Service</option><option>PM</option><option>Install</option><option>Quoted</option></select>
     </div>
     <table><thead><tr>
-      <th style="width:90px">W/O #</th><th style="width:100px">Tech</th><th>Customer</th>
+      <th style="width:90px">W/O #</th><th style="width:100px">Tech</th><th style="width:120px">Customer</th>
       <th style="width:80px">Type</th><th style="width:160px">Status</th>
-      <th style="width:90px">Date</th><th style="width:60px">Age</th><th style="width:80px">Source</th>
+      <th style="width:90px">Date</th><th style="width:60px">Age</th><th>Notes</th><th style="width:80px">Source</th>
     </tr></thead><tbody id="board-body"></tbody></table>
   </div>
 
@@ -261,9 +274,9 @@ tr:hover td{background:#fafafa}
       <button class="btn-add" onclick="openModal('quoted',null)">+ Add Quoted Job</button>
     </div>
     <table><thead><tr>
-      <th style="width:90px">W/O #</th><th style="width:100px">Tech(s)</th><th>Customer / Site</th>
+      <th style="width:90px">W/O #</th><th style="width:100px">Tech(s)</th><th style="width:120px">Customer / Site</th>
       <th style="width:80px">Type</th><th style="width:90px">Hrs Q'd</th><th style="width:90px">Cost Q'd</th>
-      <th style="width:150px">Status</th><th style="width:90px">Date</th><th style="width:110px"></th>
+      <th style="width:150px">Status</th><th style="width:90px">Date</th><th>Notes</th><th style="width:110px"></th>
     </tr></thead><tbody id="quoted-body"></tbody></table>
   </div>
 
@@ -318,7 +331,7 @@ tr:hover td{background:#fafafa}
   </div>
 
   <div id="tab-scoreboard" class="section">
-    <p style="font-size:13px;color:#888;margin-bottom:12px">Live stats per tech based on current board data.</p>
+    <p style="font-size:13px;color:#888;margin-bottom:12px">All open and completed jobs per tech — pulls from Work Orders, Quoted, Scheduled, and Archive.</p>
     <div class="scoreboard-grid" id="scoreboard-grid"></div>
   </div>
 
@@ -569,28 +582,29 @@ function renderBoard(){
     const techMatch=!tech||r.tech===tech;
     const typeMatch=!typeF||r.type===typeF;
     const textMatch=!q||(r.wo_num+r.tech+(r.customer||'')+(r.notes||'')+r.type).toLowerCase().includes(q);
-    if(techMatch&&typeMatch&&textMatch)rows.push({wo_num:r.wo_num,tech:r.tech,customer:r.customer||'\u2014',type:r.type,status:r.status,date:r.due,created:r.created,src:'WO'});
+    if(techMatch&&typeMatch&&textMatch)rows.push({wo_num:r.wo_num,tech:r.tech,customer:r.customer||'\u2014',type:r.type,status:r.status,date:r.due,created:r.created,notes:r.notes||'',src:'WO'});
   });
   data.quoted.forEach(r=>{
     const techStr=(r.techs||[]).filter(Boolean).join(', ');
     const techMatch=!tech||(r.techs||[]).includes(tech)||techStr.includes(tech);
     const typeMatch=!typeF||r.type===typeF;
-    const textMatch=!q||(r.wo_num+techStr+(r.customer||'')+r.type).toLowerCase().includes(q);
-    if(techMatch&&typeMatch&&textMatch)rows.push({wo_num:r.wo_num,tech:techStr||'\u2014',customer:r.customer||'\u2014',type:r.type,status:r.status,date:r.date,created:null,src:'Quoted'});
+    const textMatch=!q||(r.wo_num+techStr+(r.customer||'')+r.type+(r.notes||'')).toLowerCase().includes(q);
+    if(techMatch&&typeMatch&&textMatch)rows.push({wo_num:r.wo_num,tech:techStr||'\u2014',customer:r.customer||'\u2014',type:r.type,status:r.status,date:r.date,created:null,notes:r.notes||'',src:'Quoted'});
   });
   data.scheduled.filter(r=>!r._quoted_ref).forEach(r=>{
     const techMatch=!tech||r.tech===tech;
     const typeMatch=!typeF||r.type===typeF;
-    const textMatch=!q||(r.wo_num+r.tech+(r.customer||'')+r.type).toLowerCase().includes(q);
-    if(techMatch&&typeMatch&&textMatch)rows.push({wo_num:r.wo_num,tech:r.tech,customer:r.customer||'\u2014',type:r.type,status:r.status,date:r.date,created:null,src:'Sched'});
+    const textMatch=!q||(r.wo_num+r.tech+(r.customer||'')+r.type+(r.notes||'')).toLowerCase().includes(q);
+    if(techMatch&&typeMatch&&textMatch)rows.push({wo_num:r.wo_num,tech:r.tech,customer:r.customer||'\u2014',type:r.type,status:r.status,date:r.date,created:null,notes:r.notes||'',src:'Sched'});
   });
   const tbody=document.getElementById('board-body');
-  if(!rows.length){tbody.innerHTML=`<tr><td colspan="8" class="empty">No open jobs</td></tr>`;return;}
+  if(!rows.length){tbody.innerHTML=`<tr><td colspan="9" class="empty">No open jobs</td></tr>`;return;}
   tbody.innerHTML=rows.map(r=>`<tr>
     <td style="font-weight:500">${r.wo_num||'\u2014'}</td><td>${r.tech||'\u2014'}</td>
     <td>${r.customer}</td><td>${typeBadge(r.type)}</td><td>${badge(r.status)}</td>
     <td class="${isOverdue(r.date)?'overdue':''}">${fmtDate(r.date)}</td>
     <td>${r.created?ageBadge(r.created):'\u2014'}</td>
+    <td class="notes-cell" onclick="toggleNotes(this)">${r.notes||'\u2014'}</td>
     <td><span class="board-source-tag src-${r.src.toLowerCase()}">${r.src}</span></td>
   </tr>`).join('');
 }
@@ -629,11 +643,11 @@ function renderQuoted(){
   const tech=document.getElementById('quoted-tech-filter').value;
   const rows=data.quoted.filter(r=>{
     const techMatch=!tech||(r.techs&&r.techs.includes(tech));
-    const textMatch=!q||(r.wo_num+(r.techs||[]).join(' ')+(r.customer||'')).toLowerCase().includes(q);
+    const textMatch=!q||(r.wo_num+(r.techs||[]).join(' ')+(r.customer||'')+(r.notes||'')).toLowerCase().includes(q);
     return textMatch&&(!f||r.status===f)&&techMatch;
   });
   const tbody=document.getElementById('quoted-body');
-  if(!rows.length){renderEmpty('quoted-body',9);return;}
+  if(!rows.length){renderEmpty('quoted-body',10);return;}
   tbody.innerHTML=rows.map(r=>{const i=data.quoted.indexOf(r);
     const techDisplay=(r.techs&&r.techs.filter(Boolean).length>0)?r.techs.filter(Boolean).join(', '):'\u2014';
     const isSynced=SYNC_STATUSES.includes(r.status)&&r.date;
@@ -644,6 +658,7 @@ function renderQuoted(){
       <td>${r.hrs_quoted||'\u2014'}</td><td>${fmtCurrency(r.cost_quoted)}</td>
       <td>${badge(r.status)}${isSynced?'<span style="font-size:10px;color:#6b21a8;margin-left:4px">&#8599; Sched</span>':''}</td>
       <td class="${isOverdue(r.date)?'overdue':''}">${fmtDate(r.date)}</td>
+      <td class="notes-cell" onclick="toggleNotes(this)">${r.notes||'\u2014'}</td>
       <td><div class="action-btns"><button class="btn-edit" onclick="openModal('quoted',${i})">Edit</button><button class="btn-done" onclick="completeQuoted(${i})">Done</button><button class="btn-del" onclick="delItem('quoted',${i})">\u2715</button></div></td>
     </tr>`;}).join('');
 }
@@ -715,20 +730,79 @@ function renderScoreboard(){
   const grid=document.getElementById('scoreboard-grid');
   if(!techs.length){grid.innerHTML=`<div class="empty">No tech data yet.</div>`;return;}
   grid.innerHTML=techs.map(tech=>{
-    const openWOs=data.wo.filter(r=>!r.completed&&r.tech===tech).length;
-    const completedWOs=data.archive.filter(r=>r.type==='wo'&&r.item&&r.item.tech===tech).length;
+    // Collect open jobs from WO + Quoted + Scheduled, deduplicated by W/O #
+    const openByWO={};
+    data.wo.filter(r=>!r.completed&&r.tech===tech).forEach(r=>{
+      const key=r.wo_num||('wo-'+Math.random());
+      openByWO[key]={wo_num:r.wo_num,customer:r.customer||'\u2014',type:r.type||'\u2014',status:r.status,date:r.due,notes:r.notes||'',src:'WO'};
+    });
+    data.quoted.forEach(r=>{
+      if(!(r.techs||[]).includes(tech))return;
+      const key=r.wo_num||('q-'+Math.random());
+      if(!openByWO[key])openByWO[key]={wo_num:r.wo_num,customer:r.customer||'\u2014',type:r.type||'\u2014',status:r.status,date:r.date,notes:r.notes||'',src:'Quoted'};
+    });
+    data.scheduled.forEach(r=>{
+      if(r.tech!==tech)return;
+      const key=r.wo_num||('s-'+Math.random());
+      if(!openByWO[key])openByWO[key]={wo_num:r.wo_num,customer:r.customer||'\u2014',type:r.type||'\u2014',status:r.status,date:r.date,notes:r.notes||'',src:'Sched'};
+    });
+    const openJobs=Object.values(openByWO);
+    const overdueCount=openJobs.filter(j=>isOverdue(j.date)).length;
     const callbacks=data.callbacks.filter(r=>r.tech===tech).length;
     const partsOwed=data.parts.filter(r=>r.tech===tech).length;
-    const scheduled=data.scheduled.filter(r=>r.tech===tech).length;
-    const overdueWOs=data.wo.filter(r=>!r.completed&&r.tech===tech&&isOverdue(r.due)).length;
-    return`<div class="score-card">
-      <div class="score-card-name">${tech}</div>
-      <div class="score-row"><span class="score-label">Open W/Os</span><span class="score-val">${openWOs}</span></div>
-      <div class="score-row"><span class="score-label">Overdue</span><span class="score-val" style="${overdueWOs>0?'color:#ea4335':''}">${overdueWOs}</span></div>
-      <div class="score-row"><span class="score-label">Scheduled</span><span class="score-val">${scheduled}</span></div>
-      <div class="score-row"><span class="score-label">Parts Pending</span><span class="score-val">${partsOwed}</span></div>
-      <div class="score-row"><span class="score-label">Callbacks</span><span class="score-val" style="${callbacks>0?'color:#ea4335':''}">${callbacks}</span></div>
-      <div class="score-row"><span class="score-label">Completed (archive)</span><span class="score-val">${completedWOs}</span></div>
+    // Completed from archive — match on tech or techs array
+    const completedJobs=data.archive.filter(r=>{
+      if(!r.item)return false;
+      const t=r.item.tech||'';
+      const ts=(r.item.techs||[]).filter(Boolean).join(', ');
+      return t===tech||ts===tech||ts.includes(tech)||t.includes(tech);
+    }).map(r=>({
+      wo_num:r.item.wo_num,
+      customer:r.item.customer||'\u2014',
+      type:r.item.type||r.type||'\u2014',
+      date:r.date,
+      cost_actual:r.item.cost_actual||null,
+      cost_quoted:r.item.cost_quoted||null
+    }));
+    const openRows=openJobs.length?openJobs.map(j=>`
+      <tr>
+        <td style="font-weight:500">${j.wo_num||'\u2014'}</td>
+        <td>${j.customer}</td>
+        <td>${typeBadge(j.type)}</td>
+        <td>${badge(j.status)}</td>
+        <td class="${isOverdue(j.date)?'overdue':''}">${fmtDate(j.date)}</td>
+        <td><span class="board-source-tag src-${j.src.toLowerCase()}">${j.src}</span></td>
+        <td class="notes-cell" onclick="toggleNotes(this)" style="max-width:140px">${j.notes||'\u2014'}</td>
+      </tr>`).join(''):`<tr><td colspan="7" style="text-align:center;color:#aaa;font-size:12px;padding:10px">No open jobs</td></tr>`;
+    const completedRows=completedJobs.length?completedJobs.map(j=>`
+      <tr>
+        <td style="font-weight:500">${j.wo_num||'\u2014'}</td>
+        <td>${j.customer}</td>
+        <td>${typeBadge(j.type)}</td>
+        <td style="color:#888">${fmtDate(j.date)}</td>
+        <td>${j.cost_actual?'$'+parseFloat(j.cost_actual).toLocaleString('en-US',{maximumFractionDigits:0}):j.cost_quoted?'$'+parseFloat(j.cost_quoted).toLocaleString('en-US',{maximumFractionDigits:0}):'\u2014'}</td>
+      </tr>`).join(''):`<tr><td colspan="5" style="text-align:center;color:#aaa;font-size:12px;padding:10px">No completed jobs yet</td></tr>`;
+    return`<div class="score-card-v2">
+      <div class="score-card-v2-header">
+        <div class="score-card-v2-name">${tech}</div>
+        <div class="score-summary">
+          <span class="score-pill">${openJobs.length} open</span>
+          ${overdueCount>0?`<span class="score-pill score-pill-red">${overdueCount} overdue</span>`:''}
+          ${callbacks>0?`<span class="score-pill score-pill-red">${callbacks} callback${callbacks!==1?'s':''}</span>`:''}
+          ${partsOwed>0?`<span class="score-pill">${partsOwed} part${partsOwed!==1?'s':''} pending</span>`:''}
+          <span class="score-pill score-pill-green">${completedJobs.length} completed</span>
+        </div>
+      </div>
+      <div class="score-section-label">Open W/Os &amp; Scheduled (${openJobs.length})</div>
+      <table class="score-inner-table">
+        <thead><tr><th>W/O #</th><th>Customer</th><th>Type</th><th>Status</th><th>Date</th><th>Src</th><th>Notes</th></tr></thead>
+        <tbody>${openRows}</tbody>
+      </table>
+      <div class="score-section-label" style="margin-top:12px">Completed (${completedJobs.length})</div>
+      <table class="score-inner-table">
+        <thead><tr><th>W/O #</th><th>Customer</th><th>Type</th><th>Completed</th><th>Cost</th></tr></thead>
+        <tbody>${completedRows}</tbody>
+      </table>
     </div>`;
   }).join('');
 }
