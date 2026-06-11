@@ -283,7 +283,7 @@ tr:hover td{background:#fafafa}
       <input type="text" placeholder="Search tech, W/O #, customer..." id="quoted-search" oninput="renderQuoted()">
       <select id="quoted-tech-filter" onchange="renderQuoted()"><option value="">All techs</option></select>
       <select id="quoted-status-filter" onchange="renderQuoted()">
-        <option value="">All statuses</option><option>Scheduled</option><option>In Progress</option><option>Approved - Awaiting Parts</option><option>On Hold</option>
+        <option value="">All statuses</option><option>Scheduled</option><option>In Progress</option><option>Approved - Awaiting Parts</option><option>Parts Arrived - Schedule Now</option><option>On Hold</option>
       </select>
       <button class="btn-add" onclick="openModal('quoted',null)">+ Add Quoted Job</button>
     </div>
@@ -1042,7 +1042,7 @@ function getModalHTML(type,item){
       <div class="form-row"><label>W/O Number</label><input id="f-wo_num" value="${v('wo_num')}" placeholder="e.g. 10432"></div>
       <div class="form-row"><label>Customer / Site</label><input id="f-customer" value="${v('customer')}" placeholder="e.g. LRCC Cat"></div>
       <div class="form-row"><label>Job Type</label><select id="f-type">${sel('type',['Service','PM','Install','Quoted'])}</select></div>
-      <div class="form-row"><label>Status</label><select id="f-status">${sel('status',['Scheduled','In Progress','Approved - Awaiting Parts','On Hold'])}</select></div>
+      <div class="form-row"><label>Status</label><select id="f-status">${sel('status',['Scheduled','In Progress','Approved - Awaiting Parts','Parts Arrived - Schedule Now','On Hold'])}</select></div>
       <div class="form-row"><label>Hrs Quoted</label><input id="f-hrs_quoted" type="number" step="0.5" value="${v('hrs_quoted')}" placeholder="e.g. 8"></div>
       <div class="form-row"><label>Cost Quoted ($)</label><input id="f-cost_quoted" type="number" value="${v('cost_quoted')}" placeholder="e.g. 4200"></div>
       <div class="form-row"><label>Scheduled Date</label><input type="date" id="f-date" value="${v('date')}"></div>
