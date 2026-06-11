@@ -367,7 +367,7 @@ tr:hover td{background:#fafafa}
   <div id="tab-archive" class="section">
     <p style="font-size:13px;color:#888;margin-bottom:12px">Completed items cleared from main board.</p>
     <table><thead><tr>
-      <th style="width:110px">Type</th><th>Item</th><th style="width:100px">Completed</th><th style="width:60px"></th>
+      <th style="width:110px">Type</th><th>Item</th><th style="width:100px">Completed</th><th style="width:90px">Cost</th><th style="width:120px"></th>
     </tr></thead><tbody id="archive-body"></tbody></table>
   </div>
 </div>
@@ -917,6 +917,7 @@ function getArchiveDetailHTML(r){
       ${f('W/O #',it.wo_num)}${f('Tech',it.tech)}${f('Customer',it.customer)}
       ${f('Job Type',it.type)}${f('Status',it.status)}${f('Due Date',fmtDate(it.due))}
       ${it.pm_hrs?f('PM Hours',it.pm_hrs+'h'):''}${f('Created',fmtDate(it.created))}
+      ${it.cost_actual!=null?f('Final Cost','$'+parseFloat(it.cost_actual).toLocaleString('en-US',{maximumFractionDigits:0})):it.cost_quoted!=null?f('Cost','$'+parseFloat(it.cost_quoted).toLocaleString('en-US',{maximumFractionDigits:0})):''}
     </div>`;
     if(it.notes){html+=`<div class="archive-field-label">Notes</div><div class="archive-notes-block">${it.notes}</div>`;}
     if(it.log&&it.log.length){
@@ -941,6 +942,7 @@ function getArchiveDetailHTML(r){
     html+=`<div class="archive-detail-grid">
       ${f('W/O #',it.wo_num)}${f('Tech',it.tech)}${f('Customer',it.customer)}
       ${f('Job Type',it.type)}${f('Status',it.status)}${f('Sched. Date',fmtDate(it.date))}
+      ${it.cost_actual!=null?f('Final Cost','$'+parseFloat(it.cost_actual).toLocaleString('en-US',{maximumFractionDigits:0})):it.cost_quoted!=null?f('Cost','$'+parseFloat(it.cost_quoted).toLocaleString('en-US',{maximumFractionDigits:0})):''}
     </div>`;
     if(it.notes){html+=`<div class="archive-field-label">Notes</div><div class="archive-notes-block">${it.notes}</div>`;}
   }
@@ -975,6 +977,41 @@ function getArchiveDetailHTML(r){
   return html;
 }
 
+function openArchiveEdit(i){
+  const r=data.archive[i];
+  const it=r.item||{};
+  const cost=it.cost_actual!=null?it.cost_actual:it.cost_quoted!=null?it.cost_quoted:'';
+  const notes=it.completion_notes||it.notes||'';
+  document.getElementById('modal-content').innerHTML=`
+    <h3>Edit Archive Entry</h3>
+    <div style="font-size:12px;color:#888;margin-bottom:14px;padding:8px 10px;background:#f5f5f3;border-radius:6px">${r.label}</div>
+    <div class="form-row"><label>Final / Actual Cost ($)</label><input id="ae-cost" type="number" step="0.01" value="${cost}" placeholder="e.g. 1850"></div>
+    <div class="form-row"><label>Notes</label><textarea id="ae-notes">${notes}</textarea></div>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn-save" onclick="saveArchiveEdit(${i})">Save</button>
+    </div>`;
+  document.getElementById('modal-bg').classList.add('open');
+}
+
+function saveArchiveEdit(i){
+  if(!data.archive[i].item)data.archive[i].item={};
+  const costVal=document.getElementById('ae-cost').value.trim();
+  const notes=document.getElementById('ae-notes').value.trim();
+  data.archive[i].item.cost_actual=costVal!==''?parseFloat(costVal):null;
+  // Store notes in the right field based on type
+  if(data.archive[i].type==='quoted'){data.archive[i].item.completion_notes=notes;}
+  else{data.archive[i].item.notes=notes;}
+  closeModal();scheduleSave();renderArchive();
+}
+
+function getArchiveCost(r){
+  const it=r.item||{};
+  const v=it.cost_actual!=null?it.cost_actual:it.cost_quoted!=null?it.cost_quoted:null;
+  if(v===null||v===undefined||v==='')return'\u2014';
+  return'$'+parseFloat(v).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0});
+}
+
 function toggleArchiveDetail(i){
   const row=document.getElementById('archive-detail-'+i);
   const btn=document.getElementById('archive-expand-btn-'+i);
@@ -986,19 +1023,21 @@ function toggleArchiveDetail(i){
 
 function renderArchive(){
   const tbody=document.getElementById('archive-body');
-  if(!data.archive.length){renderEmpty('archive-body',4);return;}
+  if(!data.archive.length){renderEmpty('archive-body',5);return;}
   tbody.innerHTML=data.archive.map((r,i)=>`
     <tr>
       <td><span class="badge badge-open">${r.type}</span></td>
       <td>${r.label}</td>
       <td>${fmtDate(r.date)}</td>
+      <td style="font-weight:500;color:#1e6e3b">${getArchiveCost(r)}</td>
       <td><div class="action-btns">
         <button class="archive-expand-btn" id="archive-expand-btn-${i}" onclick="toggleArchiveDetail(${i})">Details</button>
+        <button class="btn-edit" onclick="openArchiveEdit(${i})">Edit</button>
         <button class="btn-del" onclick="delArchive(${i})">\u2715</button>
       </div></td>
     </tr>
     <tr id="archive-detail-${i}" class="archive-detail-row" style="display:none">
-      <td colspan="4">${getArchiveDetailHTML(r)}</td>
+      <td colspan="5">${getArchiveDetailHTML(r)}</td>
     </tr>`).join('');
 }
 
