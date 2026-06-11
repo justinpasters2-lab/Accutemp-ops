@@ -1017,6 +1017,7 @@ function openArchiveEdit(i){
     if(el)el.addEventListener('input',calcArchiveMargin);
   });
   calcArchiveMargin();
+  document.getElementById('modal-bg').classList.add('open');
 }
 
 function calcArchiveMargin(){
