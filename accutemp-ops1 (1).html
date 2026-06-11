@@ -1,0 +1,1388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Accutemp Ops Board</title>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f5f3;color:#1a1a1a;min-height:100vh}
+#auth-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;flex-direction:column;gap:16px}
+#auth-screen h1{font-size:22px;font-weight:500}
+#auth-screen p{font-size:14px;color:#666}
+#app{display:none;padding:20px 24px;max-width:1300px;margin:0 auto}
+.header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid #e0e0e0}
+.header h1{font-size:18px;font-weight:500}
+.header-right{display:flex;align-items:center;gap:12px}
+.user-info{font-size:13px;color:#666}
+.btn-signout{font-size:12px;padding:4px 12px;border:1px solid #ddd;border-radius:6px;background:white;cursor:pointer;color:#444}
+.btn-signout:hover{background:#f5f5f5}
+.btn-pdf{font-size:12px;padding:4px 12px;border:1px solid #1a73e8;border-radius:6px;background:white;cursor:pointer;color:#1a73e8;font-weight:500}
+.btn-pdf:hover{background:#e8f0fe}
+.sync-status{font-size:12px;color:#888;min-width:140px;text-align:right}
+.sync-status.saving{color:#1a73e8}
+.sync-status.saved{color:#34a853}
+.sync-status.error{color:#ea4335}
+.global-search-bar{margin-bottom:16px;position:relative}
+.global-search-bar input{width:100%;font-size:13px;height:36px;padding:0 12px 0 36px;border-radius:8px;border:1px solid #ddd;background:white;color:#1a1a1a;outline:none}
+.global-search-bar input:focus{border-color:#1a73e8;box-shadow:0 0 0 3px rgba(26,115,232,0.1)}
+.global-search-bar .search-icon{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:#aaa;font-size:14px;pointer-events:none}
+.global-results{background:white;border:1px solid #e0e0e0;border-radius:8px;overflow:hidden;margin-top:4px;display:none}
+.global-results.show{display:block}
+.global-result-item{padding:10px 14px;border-bottom:1px solid #f0f0f0;cursor:pointer;font-size:13px}
+.global-result-item:last-child{border-bottom:none}
+.global-result-item:hover{background:#f5f5f3}
+.global-result-type{font-size:10px;font-weight:600;text-transform:uppercase;color:#888;margin-right:8px}
+.global-result-main{font-weight:500}
+.global-result-sub{font-size:12px;color:#888;margin-top:1px}
+.stats{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:20px}
+.stat{background:white;border-radius:8px;padding:12px 14px;border:1px solid #e8e8e8}
+.stat-num{font-size:22px;font-weight:500}
+.stat-label{font-size:11px;color:#888;margin-top:2px}
+.tabs{display:flex;gap:0;border-bottom:1px solid #e0e0e0;margin-bottom:0;flex-wrap:wrap}
+.tab{font-size:13px;padding:8px 14px;cursor:pointer;color:#666;background:none;border:none;border-bottom:2px solid transparent;margin-bottom:-1px;position:relative;white-space:nowrap}
+.tab.active{color:#1a1a1a;font-weight:500;border-bottom:2px solid #1a1a1a}
+.tab:hover:not(.active){color:#1a1a1a}
+.tab-badge{display:inline-block;font-size:10px;font-weight:600;padding:1px 5px;border-radius:10px;background:#ea4335;color:white;margin-left:5px;vertical-align:middle}
+.section{display:none;padding-top:16px}
+.section.active{display:block}
+.toolbar{display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.toolbar input,.toolbar select{font-size:13px;height:32px;padding:0 10px;border-radius:6px;border:1px solid #ddd;background:white;color:#1a1a1a;outline:none}
+.toolbar input{flex:1;min-width:160px}
+.toolbar select{min-width:120px}
+.toolbar input:focus,.toolbar select:focus{border-color:#1a73e8}
+.btn-add{font-size:13px;height:32px;padding:0 16px;background:#1a1a1a;color:white;border:none;border-radius:6px;cursor:pointer;white-space:nowrap}
+.btn-add:hover{background:#333}
+table{width:100%;border-collapse:collapse;font-size:13px;background:white;border-radius:8px;overflow:hidden;border:1px solid #e8e8e8}
+th{text-align:left;font-size:11px;font-weight:500;color:#888;padding:8px 12px;border-bottom:1px solid #e8e8e8;background:#fafafa;letter-spacing:0.03em;text-transform:uppercase}
+td{padding:10px 12px;border-bottom:1px solid #f0f0f0;vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#fafafa}
+.badge{display:inline-block;font-size:11px;padding:2px 8px;border-radius:20px;font-weight:500;white-space:nowrap}
+.badge-waiting{background:#fef3e2;color:#b45309}
+.badge-progress{background:#e8f0fe;color:#1557b0}
+.badge-callback{background:#fce8f0;color:#9c2c6b}
+.badge-open{background:#e6f4ea;color:#1e6e3b}
+.badge-parts{background:#fce8e6;color:#a33b2e}
+.badge-partsarrived{background:#fff3cd;color:#856404}
+.badge-approved{background:#e8f5e9;color:#2e7d32}
+.badge-scheduled{background:#e3f2fd;color:#1565c0}
+.badge-quoted{background:#f3e8fd;color:#6b21a8}
+.badge-completed{background:#e6f4ea;color:#1e6e3b}
+.badge-wo{background:#e8f0fe;color:#1557b0}
+.badge-service{background:#fef3e2;color:#b45309}
+.badge-pm{background:#e6f4ea;color:#1e6e3b}
+.badge-install{background:#f3e8fd;color:#6b21a8}
+.btn-done{font-size:11px;padding:3px 10px;border-radius:20px;cursor:pointer;background:none;border:1px solid #ddd;color:#666}
+.btn-done:hover{background:#e6f4ea;color:#1e6e3b;border-color:#a8d5b5}
+.btn-edit{font-size:11px;padding:3px 10px;border-radius:20px;cursor:pointer;background:none;border:1px solid #ddd;color:#666}
+.btn-edit:hover{background:#e8f0fe;color:#1557b0;border-color:#aac4f5}
+.btn-log{font-size:11px;padding:3px 10px;border-radius:20px;cursor:pointer;background:none;border:1px solid #ddd;color:#666}
+.btn-log:hover{background:#f3e8fd;color:#6b21a8;border-color:#d8b4fe}
+.btn-del{font-size:13px;padding:2px 6px;border-radius:4px;cursor:pointer;background:none;border:none;color:#ccc}
+.btn-del:hover{color:#ea4335}
+.overdue{color:#ea4335!important;font-weight:500}
+.action-btns{display:flex;gap:4px;align-items:center}
+.notes-cell{max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#666;cursor:pointer}
+.notes-cell:hover{color:#1a73e8;text-decoration:underline}
+.notes-expanded{white-space:normal;max-width:none;overflow:visible;text-overflow:unset}
+.age-badge{display:inline-block;font-size:10px;padding:1px 6px;border-radius:10px;font-weight:600}
+.age-fresh{background:#e6f4ea;color:#1e6e3b}
+.age-warn{background:#fef3e2;color:#b45309}
+.age-old{background:#fce8e6;color:#a33b2e}
+.completed-row td{opacity:0.55;text-decoration:line-through}
+.completed-row td .action-btns,.completed-row td .badge{text-decoration:none}
+.synced-row td:first-child::after{content:' ↗';font-size:10px;color:#6b21a8;font-weight:600}
+.wo-link{color:#1a73e8;cursor:pointer;text-decoration:underline;font-weight:500}
+.wo-link:hover{color:#1557b0}
+.highlight-row td{background:#fffbcc!important;transition:background 1.5s}
+.empty{text-align:center;padding:40px;color:#aaa;font-size:13px;background:white;border-radius:8px;border:1px solid #e8e8e8}
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:100;align-items:center;justify-content:center}
+.modal-bg.open{display:flex}
+.modal{background:white;border-radius:12px;border:1px solid #e0e0e0;padding:20px 24px;width:540px;max-width:95vw;max-height:90vh;overflow-y:auto}
+.modal h3{font-size:15px;font-weight:500;margin-bottom:16px}
+.form-row{margin-bottom:12px}
+.form-row label{display:block;font-size:12px;color:#666;margin-bottom:4px;font-weight:500}
+.form-row input,.form-row select,.form-row textarea{width:100%;font-size:13px;padding:7px 10px;border-radius:6px;border:1px solid #ddd;background:white;color:#1a1a1a;outline:none}
+.form-row input:focus,.form-row select:focus,.form-row textarea:focus{border-color:#1a73e8}
+.form-row textarea{resize:vertical;min-height:70px}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.modal-btns{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;padding-top:16px;border-top:1px solid #f0f0f0}
+.btn-cancel{font-size:13px;padding:7px 18px;background:none;border:1px solid #ddd;border-radius:6px;cursor:pointer;color:#444}
+.btn-cancel:hover{background:#f5f5f5}
+.btn-save{font-size:13px;padding:7px 18px;background:#1a1a1a;color:white;border:none;border-radius:6px;cursor:pointer}
+.btn-save:hover{background:#333}
+.pm-hrs-row{display:none}
+.pm-hrs-row.show{display:block}
+.tech-list{display:flex;flex-direction:column;gap:6px;margin-top:4px}
+.tech-entry{display:flex;gap:6px;align-items:center}
+.tech-entry input{flex:1}
+.btn-add-tech{font-size:12px;padding:4px 10px;background:none;border:1px dashed #ddd;border-radius:6px;cursor:pointer;color:#666;margin-top:4px}
+.btn-add-tech:hover{border-color:#1a73e8;color:#1a73e8}
+.btn-remove-tech{font-size:12px;padding:2px 6px;background:none;border:none;cursor:pointer;color:#ccc}
+.btn-remove-tech:hover{color:#ea4335}
+.completion-section{background:#f0f9ff;border-radius:8px;padding:14px;border:1px solid #bae6fd;margin-bottom:12px}
+.completion-section h4{font-size:13px;font-weight:500;color:#0369a1;margin-bottom:10px}
+.variance-display{font-size:13px;padding:8px 12px;border-radius:6px;margin-top:8px;font-weight:500}
+.variance-over{background:#fce8e6;color:#a33b2e}
+.variance-under{background:#e6f4ea;color:#1e6e3b}
+.variance-even{background:#fef3e2;color:#b45309}
+.checkbox-row{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.checkbox-row input[type=checkbox]{width:16px;height:16px;cursor:pointer;accent-color:#1a73e8}
+.checkbox-row label{font-size:13px;color:#444;cursor:pointer;font-weight:500;margin:0}
+.activity-log{margin-top:4px}
+.log-entry{display:flex;gap:10px;padding:8px 0;border-bottom:1px solid #f0f0f0;font-size:12px}
+.log-entry:last-child{border-bottom:none}
+.log-time{color:#999;white-space:nowrap;min-width:110px}
+.log-msg{color:#444}
+.log-empty{font-size:13px;color:#aaa;padding:16px 0;text-align:center}
+.promoted-banner{background:#e8f5e9;border:1px solid #a8d5b5;border-radius:6px;padding:8px 12px;font-size:12px;color:#1e6e3b;margin-bottom:12px;display:none}
+.promoted-banner.show{display:block}
+.board-source-tag{font-size:10px;font-weight:600;padding:1px 6px;border-radius:10px;margin-left:4px;vertical-align:middle}
+.src-wo{background:#e8f0fe;color:#1557b0}
+.src-quoted{background:#f3e8fd;color:#6b21a8}
+.src-scheduled{background:#e3f2fd;color:#1565c0}
+.src-sched{background:#e3f2fd;color:#1565c0}
+.scoreboard-grid{display:flex;flex-direction:column;gap:12px;margin-top:4px}
+.score-card{background:white;border:1px solid #e8e8e8;border-radius:8px;padding:14px}
+.score-card-name{font-size:14px;font-weight:500;margin-bottom:8px}
+.score-row{display:flex;justify-content:space-between;font-size:12px;padding:3px 0;border-bottom:1px solid #f5f5f3}
+.score-row:last-child{border-bottom:none}
+.score-label{color:#888}
+.score-val{font-weight:500}
+.score-card-v2{background:white;border:1px solid #e8e8e8;border-radius:8px;padding:16px}
+.score-card-v2-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid #f0f0f0;flex-wrap:wrap;gap:6px}
+.score-card-v2-name{font-size:15px;font-weight:600}
+.score-summary{display:flex;gap:6px;flex-wrap:wrap}
+.score-pill{font-size:11px;padding:2px 8px;border-radius:10px;background:#f5f5f3;color:#555;font-weight:500}
+.score-pill-red{background:#fce8e6;color:#a33b2e}
+.score-pill-green{background:#e6f4ea;color:#1e6e3b}
+.score-section-label{font-size:10px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:0.05em;margin:10px 0 4px}
+.score-inner-table{width:100%;border-collapse:collapse;font-size:12px}
+.score-inner-table th{text-align:left;font-size:10px;color:#aaa;padding:3px 6px;border-bottom:1px solid #f0f0f0;font-weight:500;text-transform:uppercase;letter-spacing:0.03em}
+.score-inner-table td{padding:5px 6px;border-bottom:1px solid #f8f8f8;vertical-align:middle}
+.score-inner-table tr:last-child td{border-bottom:none}
+.pm-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;margin-top:4px}
+.pm-card{background:white;border:1px solid #e8e8e8;border-radius:8px;padding:14px}
+.pm-card-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}
+.pm-card-customer{font-size:13px;font-weight:500}
+.pm-card-wo{font-size:11px;color:#888}
+.pm-card-tech{font-size:12px;color:#666;margin-bottom:6px}
+.pm-card-meta{display:flex;gap:8px;flex-wrap:wrap;font-size:11px}
+.pm-meta-item{background:#f5f5f3;border-radius:4px;padding:2px 7px;color:#555}
+.customer-card{background:white;border:1px solid #e8e8e8;border-radius:8px;padding:14px;margin-bottom:8px}
+.customer-card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.customer-card-name{font-size:14px;font-weight:500}
+.customer-history{font-size:12px;color:#888;margin-top:4px}
+.customer-jobs{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.pdf-filter-modal{width:480px}
+.archive-detail-row td{padding:0!important;background:#fafafa;border-bottom:2px solid #e8e8e8}
+.archive-detail-panel{padding:14px 16px}
+.archive-detail-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-bottom:8px}
+.archive-field-label{font-size:10px;color:#888;text-transform:uppercase;letter-spacing:0.04em;font-weight:600;margin-bottom:2px}
+.archive-field-value{font-size:13px;color:#1a1a1a}
+.archive-notes-block{background:white;border:1px solid #e8e8e8;border-radius:6px;padding:8px 10px;font-size:12px;color:#444;white-space:pre-wrap;margin-top:6px}
+.archive-section-divider{font-size:10px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:0.05em;border-top:1px solid #e8e8e8;padding-top:8px;margin-top:8px;margin-bottom:6px}
+.archive-log-entry{display:flex;gap:10px;padding:5px 0;border-bottom:1px solid #f0f0f0;font-size:11px}
+.archive-log-entry:last-child{border-bottom:none}
+.archive-log-time{color:#bbb;white-space:nowrap;min-width:110px}
+.archive-log-msg{color:#555}
+.archive-expand-btn{font-size:11px;padding:3px 10px;border-radius:20px;cursor:pointer;background:none;border:1px solid #ddd;color:#666;margin-right:4px}
+.archive-expand-btn:hover{background:#e8f0fe;color:#1557b0;border-color:#aac4f5}
+.pdf-filter-section{background:#f8f8f8;border-radius:8px;padding:14px;margin-bottom:12px;border:1px solid #e8e8e8}
+.pdf-filter-section h4{font-size:12px;font-weight:600;color:#666;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:10px}
+.pdf-filter-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.pdf-checkbox-group{display:flex;flex-direction:column;gap:6px}
+.pdf-checkbox-item{display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer}
+.pdf-checkbox-item input{width:14px;height:14px;cursor:pointer;accent-color:#1a73e8}
+</style>
+</head>
+<body>
+
+<div id="auth-screen">
+  <h1>Accutemp Ops Board</h1>
+  <p>Sign in to access your dashboard</p>
+  <div id="g_id_onload" data-client_id="684471418257-d5013g7bv614s9ao4bm9t40h2pgjlalr.apps.googleusercontent.com" data-callback="handleCredential" data-auto_prompt="true"></div>
+  <div class="g_id_signin" data-type="standard" data-size="large" data-text="sign_in_with"></div>
+</div>
+
+<div id="app">
+  <div class="header">
+    <div>
+      <h1>Accutemp Ops Board</h1>
+      <div style="font-size:12px;color:#888;margin-top:2px" id="date-display"></div>
+    </div>
+    <div class="header-right">
+      <button class="btn-pdf" onclick="openPDFModal()">&#8595; Export PDF</button>
+      <span class="sync-status" id="sync-status"></span>
+      <span class="user-info" id="user-info"></span>
+      <button class="btn-signout" onclick="signOut()">Sign out</button>
+    </div>
+  </div>
+  <div id="promoted-banner" class="promoted-banner"></div>
+  <div class="global-search-bar">
+    <span class="search-icon">&#128269;</span>
+    <input type="text" id="global-search" placeholder="Global search across all tabs — W/O #, tech, customer, notes..." oninput="globalSearch()" onblur="setTimeout(()=>hideGlobalResults(),200)">
+    <div class="global-results" id="global-results"></div>
+  </div>
+  <div class="stats">
+    <div class="stat"><div class="stat-num" id="s-wo">0</div><div class="stat-label">Open W/Os</div></div>
+    <div class="stat"><div class="stat-num" id="s-quoted">0</div><div class="stat-label">Quoted Jobs</div></div>
+    <div class="stat"><div class="stat-num" id="s-parts">0</div><div class="stat-label">Parts Pending</div></div>
+    <div class="stat"><div class="stat-num" id="s-scheduled">0</div><div class="stat-label">Scheduled Jobs</div></div>
+    <div class="stat"><div class="stat-num" id="s-callbacks">0</div><div class="stat-label">Callbacks Due</div></div>
+    <div class="stat"><div class="stat-num" id="s-tasks">0</div><div class="stat-label">My Tasks</div></div>
+  </div>
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('board')" id="tabbtn-board">Board View</button>
+    <button class="tab" onclick="switchTab('wo')" id="tabbtn-wo">Work Orders</button>
+    <button class="tab" onclick="switchTab('quoted')" id="tabbtn-quoted">Quoted Jobs</button>
+    <button class="tab" onclick="switchTab('parts')" id="tabbtn-parts">Parts Pipeline</button>
+    <button class="tab" onclick="switchTab('scheduled')" id="tabbtn-scheduled">Scheduled Jobs</button>
+    <button class="tab" onclick="switchTab('callbacks')" id="tabbtn-callbacks">Callbacks</button>
+    <button class="tab" onclick="switchTab('tasks')" id="tabbtn-tasks">My Tasks</button>
+    <button class="tab" onclick="switchTab('scoreboard')" id="tabbtn-scoreboard">Scoreboard</button>
+    <button class="tab" onclick="switchTab('pmtracker')" id="tabbtn-pmtracker">PM Tracker</button>
+    <button class="tab" onclick="switchTab('customers')" id="tabbtn-customers">Customers</button>
+    <button class="tab" onclick="switchTab('archive')" id="tabbtn-archive">Archive</button>
+  </div>
+
+  <div id="tab-board" class="section active">
+    <div class="toolbar">
+      <input type="text" placeholder="Filter by tech, W/O #, customer, type..." id="board-search" oninput="renderBoard()">
+      <select id="board-tech-filter" onchange="renderBoard()"><option value="">All techs</option></select>
+      <select id="board-type-filter" onchange="renderBoard()"><option value="">All types</option><option>Service</option><option>PM</option><option>Install</option><option>Quoted</option></select>
+    </div>
+    <table><thead><tr>
+      <th style="width:90px">W/O #</th><th style="width:100px">Tech</th><th style="width:120px">Customer</th>
+      <th style="width:80px">Type</th><th style="width:160px">Status</th>
+      <th style="width:90px">Date</th><th style="width:60px">Age</th><th>Notes</th><th style="width:80px">Source</th>
+    </tr></thead><tbody id="board-body"></tbody></table>
+  </div>
+
+  <div id="tab-wo" class="section">
+    <div class="toolbar">
+      <input type="text" placeholder="Search tech, W/O #, customer, notes..." id="wo-search" oninput="renderWO()">
+      <select id="wo-tech-filter" onchange="renderWO()"><option value="">All techs</option></select>
+      <select id="wo-filter" onchange="renderWO()">
+        <option value="">All statuses</option>
+        <option>In Progress</option><option>Waiting on Parts</option><option>Parts Arrived - Schedule Now</option><option>Waiting on Customer</option><option>Needs Follow-up</option><option>Needs Quote</option>
+      </select>
+      <button class="btn-add" onclick="openModal('wo',null)">+ Add W/O</button>
+    </div>
+    <table><thead><tr>
+      <th style="width:90px">W/O #</th><th style="width:100px">Tech</th><th style="width:120px">Customer</th><th style="width:80px">Type</th>
+      <th style="width:160px">Status</th><th style="width:90px">Due</th><th style="width:50px">Age</th><th>Notes</th><th style="width:150px"></th>
+    </tr></thead><tbody id="wo-body"></tbody></table>
+  </div>
+
+  <div id="tab-quoted" class="section">
+    <div class="toolbar">
+      <input type="text" placeholder="Search tech, W/O #, customer..." id="quoted-search" oninput="renderQuoted()">
+      <select id="quoted-tech-filter" onchange="renderQuoted()"><option value="">All techs</option></select>
+      <select id="quoted-status-filter" onchange="renderQuoted()">
+        <option value="">All statuses</option><option>Scheduled</option><option>In Progress</option><option>Approved - Awaiting Parts</option><option>On Hold</option>
+      </select>
+      <button class="btn-add" onclick="openModal('quoted',null)">+ Add Quoted Job</button>
+    </div>
+    <table><thead><tr>
+      <th style="width:90px">W/O #</th><th style="width:100px">Tech(s)</th><th style="width:120px">Customer / Site</th>
+      <th style="width:80px">Type</th><th style="width:90px">Hrs Q'd</th><th style="width:90px">Cost Q'd</th>
+      <th style="width:150px">Status</th><th style="width:90px">Date</th><th>Notes</th><th style="width:110px"></th>
+    </tr></thead><tbody id="quoted-body"></tbody></table>
+  </div>
+
+  <div id="tab-parts" class="section">
+    <div class="toolbar">
+      <input type="text" placeholder="Search part, tech, W/O..." id="parts-search" oninput="renderParts()">
+      <select id="parts-tech-filter" onchange="renderParts()"><option value="">All techs</option></select>
+      <button class="btn-add" onclick="openModal('parts',null)">+ Add Part</button>
+    </div>
+    <table><thead><tr>
+      <th style="width:90px">W/O #</th><th style="width:100px">Tech</th><th>Part</th>
+      <th style="width:100px">Supplier</th><th style="width:90px">Ordered</th><th style="width:90px">ETA</th><th style="width:110px"></th>
+    </tr></thead><tbody id="parts-body"></tbody></table>
+  </div>
+
+  <div id="tab-scheduled" class="section">
+    <div class="toolbar">
+      <input type="text" placeholder="Search customer, tech, W/O..." id="scheduled-search" oninput="renderScheduled()">
+      <select id="scheduled-tech-filter" onchange="renderScheduled()"><option value="">All techs</option></select>
+      <select id="scheduled-filter" onchange="renderScheduled()">
+        <option value="">All statuses</option><option>Approved - Awaiting Parts</option><option>Scheduled</option><option>On Hold</option>
+      </select>
+      <button class="btn-add" onclick="openModal('scheduled',null)">+ Add Job</button>
+    </div>
+    <table><thead><tr>
+      <th style="width:90px">W/O #</th><th style="width:100px">Tech</th><th>Customer</th>
+      <th style="width:80px">Type</th><th style="width:160px">Status</th><th style="width:90px">Sched. Date</th>
+      <th>Notes</th><th style="width:110px"></th>
+    </tr></thead><tbody id="scheduled-body"></tbody></table>
+  </div>
+
+  <div id="tab-callbacks" class="section">
+    <div class="toolbar">
+      <input type="text" placeholder="Search customer, tech..." id="callbacks-search" oninput="renderCallbacks()">
+      <select id="callbacks-tech-filter" onchange="renderCallbacks()"><option value="">All techs</option></select>
+      <button class="btn-add" onclick="openModal('callbacks',null)">+ Add Callback</button>
+    </div>
+    <table><thead><tr>
+      <th>Customer</th><th style="width:100px">Tech</th><th>Reason</th>
+      <th style="width:90px">Flagged</th><th style="width:90px">Deadline</th><th style="width:110px"></th>
+    </tr></thead><tbody id="callbacks-body"></tbody></table>
+  </div>
+
+  <div id="tab-tasks" class="section">
+    <div class="toolbar">
+      <input type="text" placeholder="Search tasks..." id="tasks-search" oninput="renderTasks()">
+      <button class="btn-add" onclick="openModal('tasks',null)">+ Add Task</button>
+    </div>
+    <table><thead><tr>
+      <th>Task</th><th style="width:120px">Category</th><th style="width:90px">Due</th><th>Notes</th><th style="width:110px"></th>
+    </tr></thead><tbody id="tasks-body"></tbody></table>
+  </div>
+
+  <div id="tab-scoreboard" class="section">
+    <p style="font-size:13px;color:#888;margin-bottom:12px">All open and completed jobs per tech — pulls from Work Orders, Quoted, Scheduled, and Archive.</p>
+    <div class="scoreboard-grid" id="scoreboard-grid"></div>
+  </div>
+
+  <div id="tab-pmtracker" class="section">
+    <div class="toolbar">
+      <input type="text" placeholder="Search customer, tech, W/O..." id="pm-search" oninput="renderPMTracker()">
+      <select id="pm-tech-filter" onchange="renderPMTracker()"><option value="">All techs</option></select>
+    </div>
+    <div class="pm-grid" id="pm-grid"></div>
+  </div>
+
+  <div id="tab-customers" class="section">
+    <div class="toolbar">
+      <input type="text" placeholder="Search customer or site..." id="customers-search" oninput="renderCustomers()">
+    </div>
+    <div id="customers-list"></div>
+  </div>
+
+  <div id="tab-archive" class="section">
+    <p style="font-size:13px;color:#888;margin-bottom:12px">Completed items cleared from main board.</p>
+    <table><thead><tr>
+      <th style="width:110px">Type</th><th>Item</th><th style="width:100px">Completed</th><th style="width:60px"></th>
+    </tr></thead><tbody id="archive-body"></tbody></table>
+  </div>
+</div>
+
+<div class="modal-bg" id="modal-bg"><div class="modal" id="modal-content"></div></div>
+<div class="modal-bg" id="completion-modal-bg"><div class="modal" id="completion-modal-content"></div></div>
+<div class="modal-bg" id="log-modal-bg"><div class="modal" id="log-modal-content"></div></div>
+<div class="modal-bg" id="pdf-modal-bg"><div class="modal pdf-filter-modal" id="pdf-modal-content"></div></div>
+
+<script>
+const CLIENT_ID='684471418257-d5013g7bv614s9ao4bm9t40h2pgjlalr.apps.googleusercontent.com';
+const SCOPES='https://www.googleapis.com/auth/drive.file';
+const FILE_NAME='accutemp-ops-data.json';
+let accessToken=null,driveFileId=null,saveTimeout=null,editingIndex=null,editingType=null;
+let data={wo:[],quoted:[],parts:[],scheduled:[],callbacks:[],tasks:[],archive:[]};
+
+function handleCredential(r){const p=JSON.parse(atob(r.credential.split('.')[1]));document.getElementById('user-info').textContent=p.email;initOAuth();}
+function initOAuth(){
+  const c=google.accounts.oauth2.initTokenClient({client_id:CLIENT_ID,scope:SCOPES,callback:(t)=>{
+    if(t.error){setSync('error','Auth failed');return;}
+    accessToken=t.access_token;
+    document.getElementById('auth-screen').style.display='none';
+    document.getElementById('app').style.display='block';
+    document.getElementById('date-display').textContent=new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
+    loadFromDrive();
+  }});
+  c.requestAccessToken();
+}
+function signOut(){google.accounts.id.disableAutoSelect();accessToken=null;driveFileId=null;document.getElementById('auth-screen').style.display='flex';document.getElementById('app').style.display='none';}
+function setSync(s,m){const e=document.getElementById('sync-status');e.className='sync-status '+s;e.textContent=m;}
+
+async function loadFromDrive(){
+  setSync('saving','Loading...');
+  try{
+    const r=await fetch(`https://www.googleapis.com/drive/v3/files?q=name='${FILE_NAME}'&spaces=drive&fields=files(id,name)`,{headers:{Authorization:'Bearer '+accessToken}});
+    const j=await r.json();
+    if(j.files&&j.files.length>0){
+      driveFileId=j.files[0].id;
+      const fr=await fetch(`https://www.googleapis.com/drive/v3/files/${driveFileId}?alt=media`,{headers:{Authorization:'Bearer '+accessToken}});
+      const fd=await fr.json();
+      data=Object.assign({wo:[],quoted:[],parts:[],scheduled:[],callbacks:[],tasks:[],archive:[]},fd);
+      setSync('saved','Loaded from Drive');
+    }else{setSync('saved','New file \u2014 ready');}
+  }catch(e){setSync('error','Load failed');}
+  autoPromoteScheduled();
+  updateStats();updateTechFilters();renderBoard();
+}
+
+async function saveToDrive(){
+  if(!accessToken)return;setSync('saving','Saving...');
+  try{
+    const body=JSON.stringify(data);
+    if(!driveFileId){
+      const m=await fetch('https://www.googleapis.com/drive/v3/files',{method:'POST',headers:{Authorization:'Bearer '+accessToken,'Content-Type':'application/json'},body:JSON.stringify({name:FILE_NAME,mimeType:'application/json'})});
+      driveFileId=(await m.json()).id;
+    }
+    await fetch(`https://www.googleapis.com/upload/drive/v3/files/${driveFileId}?uploadType=media`,{method:'PATCH',headers:{Authorization:'Bearer '+accessToken,'Content-Type':'application/json'},body});
+    setSync('saved','Saved \u2713 '+new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}));
+  }catch(e){setSync('error','Save failed');}
+}
+function scheduleSave(){clearTimeout(saveTimeout);saveTimeout=setTimeout(saveToDrive,800);}
+function fmtDate(d){if(!d)return'\u2014';const[y,m,day]=d.split('-');return`${m}/${day}/${y.slice(2)}`;}
+function isOverdue(d){if(!d)return false;return new Date(d)<new Date(new Date().toDateString());}
+function fmtCurrency(v){if(!v&&v!==0)return'\u2014';return'$'+parseFloat(v).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0});}
+function today(){return new Date().toISOString().split('T')[0];}
+function nowTs(){return new Date().toLocaleString('en-US',{month:'numeric',day:'numeric',year:'2-digit',hour:'numeric',minute:'2-digit',hour12:true});}
+function calcAge(created){if(!created)return null;return Math.floor((new Date()-new Date(created))/(1000*60*60*24));}
+function ageBadge(created){
+  const d=calcAge(created);if(d===null)return'';
+  const cls=d<=3?'age-fresh':d<=7?'age-warn':'age-old';
+  return`<span class="age-badge ${cls}">${d}d</span>`;
+}
+function logActivity(wo,msg){if(!wo.log)wo.log=[];wo.log.unshift({ts:nowTs(),msg});}
+
+// Archive dedup helper — never add same W/O # twice
+function archiveNotDupe(wo_num){
+  if(!wo_num)return true;
+  return!data.archive.some(a=>a.item&&a.item.wo_num===wo_num);
+}
+
+const SYNC_STATUSES=['Scheduled','Approved - Awaiting Parts'];
+function syncQuotedToScheduled(quotedItem){
+  if(!quotedItem.wo_num)return;
+  const shouldSync=quotedItem.date&&SYNC_STATUSES.includes(quotedItem.status);
+  const existingIdx=data.scheduled.findIndex(s=>s._quoted_ref===quotedItem.wo_num);
+  if(shouldSync){
+    const synced={wo_num:quotedItem.wo_num,tech:(quotedItem.techs||[]).filter(Boolean).join(', '),customer:quotedItem.customer||'',type:quotedItem.type||'',status:quotedItem.status,date:quotedItem.date,notes:quotedItem.notes||'',_quoted_ref:quotedItem.wo_num};
+    if(existingIdx>=0)data.scheduled[existingIdx]=synced;
+    else data.scheduled.push(synced);
+  }else if(existingIdx>=0){data.scheduled.splice(existingIdx,1);}
+}
+function removeSyncedScheduled(wo_num){const idx=data.scheduled.findIndex(s=>s._quoted_ref===wo_num);if(idx>=0)data.scheduled.splice(idx,1);}
+
+function autoPromoteScheduled(){
+  const todayStr=today();const promoted=[];
+  data.scheduled=data.scheduled.filter(s=>{
+    if(s.status==='Scheduled'&&s.date&&s.date<=todayStr){
+      const exists=data.wo.some(w=>w.wo_num===s.wo_num);
+      if(!exists){
+        data.wo.push({wo_num:s.wo_num,tech:s.tech,customer:s.customer||'',type:s.type,status:'In Progress',due:'',notes:s.notes||'',pm_hrs:'',completed:false,created:today(),log:[{ts:nowTs(),msg:`Auto-promoted from Scheduled Jobs (was scheduled ${fmtDate(s.date)})`}]});
+        promoted.push(s.wo_num||'unknown');
+      }
+      return false;
+    }
+    return true;
+  });
+  if(promoted.length>0){
+    const banner=document.getElementById('promoted-banner');
+    banner.textContent=`${promoted.length} job(s) auto-promoted to Work Orders: ${promoted.join(', ')}`;
+    banner.classList.add('show');setTimeout(()=>banner.classList.remove('show'),8000);
+  }
+}
+
+function badge(status){
+  const map={'In Progress':'badge-progress','Waiting on Parts':'badge-parts','Parts Arrived - Schedule Now':'badge-partsarrived','Waiting on Customer':'badge-callback','Needs Follow-up':'badge-callback','Needs Quote':'badge-waiting','Approved - Awaiting Parts':'badge-approved','Scheduled':'badge-scheduled','On Hold':'badge-waiting','Open':'badge-open'};
+  return`<span class="badge ${map[status]||'badge-open'}">${status}</span>`;
+}
+function typeBadge(t){
+  const map={'Service':'badge-service','PM':'badge-pm','Install':'badge-install','Quoted':'badge-quoted'};
+  return`<span class="badge ${map[t]||'badge-open'}">${t||'\u2014'}</span>`;
+}
+
+function updateStats(){
+  document.getElementById('s-wo').textContent=data.wo.filter(r=>!r.completed).length;
+  document.getElementById('s-quoted').textContent=data.quoted.length;
+  document.getElementById('s-parts').textContent=data.parts.length;
+  document.getElementById('s-scheduled').textContent=data.scheduled.length;
+  document.getElementById('s-callbacks').textContent=data.callbacks.length;
+  document.getElementById('s-tasks').textContent=data.tasks.length;
+  updateOverdueBadges();
+}
+function updateOverdueBadges(){
+  const counts={wo:data.wo.filter(r=>!r.completed&&isOverdue(r.due)).length,quoted:data.quoted.filter(r=>isOverdue(r.date)).length,parts:data.parts.filter(r=>isOverdue(r.eta)).length,scheduled:data.scheduled.filter(r=>isOverdue(r.date)).length,callbacks:data.callbacks.filter(r=>isOverdue(r.deadline)).length,tasks:data.tasks.filter(r=>isOverdue(r.due)).length};
+  ['wo','quoted','parts','scheduled','callbacks','tasks'].forEach(t=>{
+    const btn=document.getElementById('tabbtn-'+t);if(!btn)return;
+    const ex=btn.querySelector('.tab-badge');if(ex)ex.remove();
+    if(counts[t]>0){const b=document.createElement('span');b.className='tab-badge';b.textContent=counts[t];btn.appendChild(b);}
+  });
+}
+function getAllTechs(){
+  const techs=new Set();
+  ['wo','quoted','parts','scheduled','callbacks'].forEach(type=>{
+    data[type].forEach(r=>{
+      if(r.tech)r.tech.split(',').map(t=>t.trim()).forEach(t=>{if(t)techs.add(t);});
+      if(r.techs&&Array.isArray(r.techs))r.techs.forEach(t=>{if(t)techs.add(t);});
+    });
+  });
+  return[...techs].sort();
+}
+function updateTechFilters(){
+  const techs=getAllTechs();
+  ['wo','quoted','parts','scheduled','callbacks','board','pm'].forEach(type=>{
+    const sel=document.getElementById(type+'-tech-filter');if(!sel)return;
+    const val=sel.value;
+    sel.innerHTML='<option value="">All techs</option>'+techs.map(t=>`<option${t===val?' selected':''}>${t}</option>`).join('');
+  });
+}
+
+const ALL_TABS=['board','wo','quoted','parts','scheduled','callbacks','tasks','scoreboard','pmtracker','customers','archive'];
+function switchTab(t){
+  ALL_TABS.forEach(tab=>{
+    const btn=document.getElementById('tabbtn-'+tab);
+    const sec=document.getElementById('tab-'+tab);
+    if(btn)btn.classList.toggle('active',tab===t);
+    if(sec)sec.classList.toggle('active',tab===t);
+  });
+  const renders={board:renderBoard,wo:renderWO,quoted:renderQuoted,parts:renderParts,scheduled:renderScheduled,callbacks:renderCallbacks,tasks:renderTasks,scoreboard:renderScoreboard,pmtracker:renderPMTracker,customers:renderCustomers,archive:renderArchive};
+  if(renders[t])renders[t]();
+}
+
+function renderEmpty(id,cols=10){const el=document.getElementById(id);if(el)el.innerHTML=`<tr><td colspan="${cols}" class="empty">No items</td></tr>`;}
+function toggleNotes(el){el.classList.toggle('notes-expanded');}
+
+function jumpToWO(wo_num){
+  switchTab('wo');
+  setTimeout(()=>{
+    document.querySelectorAll('#wo-body tr').forEach(row=>{
+      const cell=row.querySelector('td:first-child');
+      if(cell&&cell.textContent.trim()===wo_num){
+        row.classList.add('highlight-row');row.scrollIntoView({behavior:'smooth',block:'center'});
+        setTimeout(()=>row.classList.remove('highlight-row'),2000);
+      }
+    });
+  },100);
+}
+
+function globalSearch(){
+  const q=(document.getElementById('global-search').value||'').toLowerCase().trim();
+  const el=document.getElementById('global-results');
+  if(q.length<2){el.classList.remove('show');return;}
+  const results=[];
+  const seenWO=new Set();
+  data.wo.forEach(r=>{
+    if((r.wo_num+r.tech+(r.customer||'')+(r.notes||'')+r.type).toLowerCase().includes(q)){
+      if(r.wo_num)seenWO.add(r.wo_num);
+      results.push({label:`W/O #${r.wo_num} \u2014 ${r.customer||r.tech}`,sub:`${r.type} \u00b7 ${r.status}`,tab:'wo',src:'WO'});
+    }
+  });
+  data.quoted.forEach(r=>{
+    if((r.wo_num+(r.customer||'')+(r.techs||[]).join(' ')).toLowerCase().includes(q)){
+      if(r.wo_num)seenWO.add(r.wo_num);
+      results.push({label:`W/O #${r.wo_num} \u2014 ${r.customer||''}`,sub:`Quoted \u00b7 ${r.status}`,tab:'quoted',src:'Quoted'});
+    }
+  });
+  data.scheduled.forEach(r=>{
+    if((r.wo_num+r.tech+(r.customer||'')).toLowerCase().includes(q)){
+      if(r.wo_num&&seenWO.has(r.wo_num))return;
+      results.push({label:`W/O #${r.wo_num} \u2014 ${r.customer||''}`,sub:`Scheduled \u00b7 ${fmtDate(r.date)}`,tab:'scheduled',src:'Sched'});
+    }
+  });
+  data.parts.forEach(r=>{if((r.wo_num+r.tech+(r.part||'')).toLowerCase().includes(q))results.push({label:`${r.part} \u2014 W/O #${r.wo_num}`,sub:`Parts \u00b7 ETA ${fmtDate(r.eta)}`,tab:'parts',src:'Parts'});});
+  data.callbacks.forEach(r=>{if((r.customer+r.tech+(r.reason||'')).toLowerCase().includes(q))results.push({label:`Callback: ${r.customer}`,sub:`Tech: ${r.tech}`,tab:'callbacks',src:'CB'});});
+  data.tasks.forEach(r=>{if((r.task+(r.notes||'')).toLowerCase().includes(q))results.push({label:r.task,sub:`Task \u00b7 ${r.category||''}`,tab:'tasks',src:'Task'});});
+  if(!results.length){el.innerHTML=`<div class="global-result-item" style="color:#aaa">No results found</div>`;el.classList.add('show');return;}
+  el.innerHTML=results.slice(0,10).map(r=>`<div class="global-result-item" onclick="switchTab('${r.tab}');hideGlobalResults()"><span class="global-result-type">${r.src}</span><span class="global-result-main">${r.label}</span><div class="global-result-sub">${r.sub}</div></div>`).join('');
+  el.classList.add('show');
+}
+function hideGlobalResults(){document.getElementById('global-results').classList.remove('show');}
+
+function renderBoard(){
+  const q=(document.getElementById('board-search').value||'').toLowerCase();
+  const tech=document.getElementById('board-tech-filter').value;
+  const typeF=document.getElementById('board-type-filter').value;
+  const rows=[];
+  data.wo.filter(r=>!r.completed).forEach(r=>{
+    const techMatch=!tech||r.tech===tech;
+    const typeMatch=!typeF||r.type===typeF;
+    const textMatch=!q||(r.wo_num+r.tech+(r.customer||'')+(r.notes||'')+r.type).toLowerCase().includes(q);
+    if(techMatch&&typeMatch&&textMatch)rows.push({wo_num:r.wo_num,tech:r.tech,customer:r.customer||'\u2014',type:r.type,status:r.status,date:r.due,created:r.created,notes:r.notes||'',src:'WO'});
+  });
+  data.quoted.forEach(r=>{
+    const techStr=(r.techs||[]).filter(Boolean).join(', ');
+    const techMatch=!tech||(r.techs||[]).includes(tech)||techStr.includes(tech);
+    const typeMatch=!typeF||r.type===typeF;
+    const textMatch=!q||(r.wo_num+techStr+(r.customer||'')+r.type+(r.notes||'')).toLowerCase().includes(q);
+    if(techMatch&&typeMatch&&textMatch)rows.push({wo_num:r.wo_num,tech:techStr||'\u2014',customer:r.customer||'\u2014',type:r.type,status:r.status,date:r.date,created:null,notes:r.notes||'',src:'Quoted'});
+  });
+  data.scheduled.filter(r=>!r._quoted_ref).forEach(r=>{
+    const techMatch=!tech||r.tech===tech;
+    const typeMatch=!typeF||r.type===typeF;
+    const textMatch=!q||(r.wo_num+r.tech+(r.customer||'')+r.type+(r.notes||'')).toLowerCase().includes(q);
+    if(techMatch&&typeMatch&&textMatch)rows.push({wo_num:r.wo_num,tech:r.tech,customer:r.customer||'\u2014',type:r.type,status:r.status,date:r.date,created:null,notes:r.notes||'',src:'Sched'});
+  });
+  const tbody=document.getElementById('board-body');
+  if(!rows.length){tbody.innerHTML=`<tr><td colspan="9" class="empty">No open jobs</td></tr>`;return;}
+  tbody.innerHTML=rows.map(r=>`<tr>
+    <td style="font-weight:500">${r.wo_num||'\u2014'}</td><td>${r.tech||'\u2014'}</td>
+    <td>${r.customer}</td><td>${typeBadge(r.type)}</td><td>${badge(r.status)}</td>
+    <td class="${isOverdue(r.date)?'overdue':''}">${fmtDate(r.date)}</td>
+    <td>${r.created?ageBadge(r.created):'\u2014'}</td>
+    <td class="notes-cell" onclick="toggleNotes(this)">${r.notes||'\u2014'}</td>
+    <td><span class="board-source-tag src-${r.src.toLowerCase()}">${r.src}</span></td>
+  </tr>`).join('');
+}
+
+function renderWO(){
+  const q=(document.getElementById('wo-search').value||'').toLowerCase();
+  const f=document.getElementById('wo-filter').value;
+  const tech=document.getElementById('wo-tech-filter').value;
+  const rows=data.wo.filter(r=>(!q||(r.wo_num+r.tech+(r.customer||'')+(r.notes||'')+r.type).toLowerCase().includes(q))&&(!f||r.status===f)&&(!tech||r.tech===tech));
+  const tbody=document.getElementById('wo-body');
+  if(!rows.length){renderEmpty('wo-body',9);return;}
+  tbody.innerHTML=rows.map(r=>{
+    const i=data.wo.indexOf(r);
+    const rowCls=r.completed?'completed-row':'';
+    const pmHrs=(r.type==='PM'&&r.pm_hrs)?`<span style="font-size:11px;color:#888;margin-left:4px">${r.pm_hrs}h</span>`:'';
+    const logCount=(r.log&&r.log.length)?`<span style="font-size:10px;color:#6b21a8;margin-left:3px">(${r.log.length})</span>`:'';
+    return`<tr class="${rowCls}">
+      <td style="font-weight:500">${r.wo_num||'\u2014'}</td><td>${r.tech||'\u2014'}</td>
+      <td>${r.customer||'\u2014'}</td>
+      <td>${r.type||'\u2014'}${pmHrs}</td><td>${badge(r.status)}</td>
+      <td class="${isOverdue(r.due)&&!r.completed?'overdue':''}">${fmtDate(r.due)}</td>
+      <td>${ageBadge(r.created)}</td>
+      <td class="notes-cell" onclick="toggleNotes(this)">${r.notes||'\u2014'}</td>
+      <td><div class="action-btns">
+        <button class="btn-edit" onclick="openModal('wo',${i})">Edit</button>
+        <button class="btn-log" onclick="openLog(${i})">Log${logCount}</button>
+        <button class="btn-done" onclick="markDone('wo',${i})">Done</button>
+        <button class="btn-del" onclick="delItem('wo',${i})">\u2715</button>
+      </div></td></tr>`;
+  }).join('');
+}
+
+function renderQuoted(){
+  const q=(document.getElementById('quoted-search').value||'').toLowerCase();
+  const f=document.getElementById('quoted-status-filter').value;
+  const tech=document.getElementById('quoted-tech-filter').value;
+  const rows=data.quoted.filter(r=>{
+    const techMatch=!tech||(r.techs&&r.techs.includes(tech));
+    const textMatch=!q||(r.wo_num+(r.techs||[]).join(' ')+(r.customer||'')+(r.notes||'')).toLowerCase().includes(q);
+    return textMatch&&(!f||r.status===f)&&techMatch;
+  });
+  const tbody=document.getElementById('quoted-body');
+  if(!rows.length){renderEmpty('quoted-body',10);return;}
+  tbody.innerHTML=rows.map(r=>{const i=data.quoted.indexOf(r);
+    const techDisplay=(r.techs&&r.techs.filter(Boolean).length>0)?r.techs.filter(Boolean).join(', '):'\u2014';
+    const isSynced=SYNC_STATUSES.includes(r.status)&&r.date;
+    return`<tr${isSynced?' class="synced-row"':''}>
+      <td style="font-weight:500">${r.wo_num||'\u2014'}</td>
+      <td title="${techDisplay}">${techDisplay.length>15?techDisplay.slice(0,15)+'\u2026':techDisplay}</td>
+      <td>${r.customer||'\u2014'}</td><td>${r.type||'\u2014'}</td>
+      <td>${r.hrs_quoted||'\u2014'}</td><td>${fmtCurrency(r.cost_quoted)}</td>
+      <td>${badge(r.status)}${isSynced?'<span style="font-size:10px;color:#6b21a8;margin-left:4px">&#8599; Sched</span>':''}</td>
+      <td class="${isOverdue(r.date)?'overdue':''}">${fmtDate(r.date)}</td>
+      <td class="notes-cell" onclick="toggleNotes(this)">${r.notes||'\u2014'}</td>
+      <td><div class="action-btns"><button class="btn-edit" onclick="openModal('quoted',${i})">Edit</button><button class="btn-done" onclick="completeQuoted(${i})">Done</button><button class="btn-del" onclick="delItem('quoted',${i})">\u2715</button></div></td>
+    </tr>`;}).join('');
+}
+
+function renderParts(){
+  const q=(document.getElementById('parts-search').value||'').toLowerCase();
+  const tech=document.getElementById('parts-tech-filter').value;
+  const rows=data.parts.filter(r=>(!q||(r.wo_num+r.tech+r.part+(r.supplier||'')).toLowerCase().includes(q))&&(!tech||r.tech===tech));
+  const tbody=document.getElementById('parts-body');
+  if(!rows.length){renderEmpty('parts-body',7);return;}
+  tbody.innerHTML=rows.map(r=>{const i=data.parts.indexOf(r);
+    const woMatch=r.wo_num&&data.wo.some(w=>w.wo_num===r.wo_num);
+    const woCell=woMatch?`<span class="wo-link" onclick="jumpToWO('${r.wo_num}')">${r.wo_num}</span>`:r.wo_num||'\u2014';
+    return`<tr><td style="font-weight:500">${woCell}</td><td>${r.tech||'\u2014'}</td><td>${r.part||'\u2014'}</td>
+    <td>${r.supplier||'\u2014'}</td><td>${fmtDate(r.ordered)}</td><td class="${isOverdue(r.eta)?'overdue':''}">${fmtDate(r.eta)}</td>
+    <td><div class="action-btns"><button class="btn-edit" onclick="openModal('parts',${i})">Edit</button><button class="btn-done" onclick="markDone('parts',${i})">In</button><button class="btn-del" onclick="delItem('parts',${i})">\u2715</button></div></td></tr>`;
+  }).join('');
+}
+
+function renderScheduled(){
+  const q=(document.getElementById('scheduled-search').value||'').toLowerCase();
+  const f=document.getElementById('scheduled-filter').value;
+  const tech=document.getElementById('scheduled-tech-filter').value;
+  const rows=data.scheduled.filter(r=>(!q||(r.wo_num+r.tech+(r.customer||'')+(r.notes||'')).toLowerCase().includes(q))&&(!f||r.status===f)&&(!tech||r.tech===tech));
+  const tbody=document.getElementById('scheduled-body');
+  if(!rows.length){renderEmpty('scheduled-body',8);return;}
+  tbody.innerHTML=rows.map(r=>{const i=data.scheduled.indexOf(r);const isRef=!!r._quoted_ref;
+    return`<tr>
+    <td style="font-weight:500">${r.wo_num||'\u2014'}${isRef?'<span style="font-size:10px;color:#6b21a8;margin-left:4px">Q</span>':''}</td>
+    <td>${r.tech||'\u2014'}</td><td>${r.customer||'\u2014'}</td><td>${r.type||'\u2014'}</td>
+    <td>${badge(r.status)}</td><td class="${isOverdue(r.date)?'overdue':''}">${fmtDate(r.date)}</td>
+    <td class="notes-cell" onclick="toggleNotes(this)">${r.notes||'\u2014'}</td>
+    <td><div class="action-btns">
+      ${isRef?'<span style="font-size:11px;color:#888;padding:0 4px">from Quote</span>':`<button class="btn-edit" onclick="openModal('scheduled',${i})">Edit</button>`}
+      <button class="btn-done" onclick="markDone('scheduled',${i})">Done</button>
+      <button class="btn-del" onclick="delItem('scheduled',${i})">\u2715</button>
+    </div></td></tr>`;}).join('');
+}
+
+function renderCallbacks(){
+  const q=(document.getElementById('callbacks-search').value||'').toLowerCase();
+  const tech=document.getElementById('callbacks-tech-filter').value;
+  const rows=data.callbacks.filter(r=>(!q||(r.customer+r.tech+(r.reason||'')).toLowerCase().includes(q))&&(!tech||r.tech===tech));
+  const tbody=document.getElementById('callbacks-body');
+  if(!rows.length){renderEmpty('callbacks-body',6);return;}
+  tbody.innerHTML=rows.map(r=>{const i=data.callbacks.indexOf(r);return`<tr>
+    <td>${r.customer||'\u2014'}</td><td>${r.tech||'\u2014'}</td>
+    <td class="notes-cell" onclick="toggleNotes(this)">${r.reason||'\u2014'}</td>
+    <td>${fmtDate(r.flagged)}</td><td class="${isOverdue(r.deadline)?'overdue':''}">${fmtDate(r.deadline)}</td>
+    <td><div class="action-btns"><button class="btn-edit" onclick="openModal('callbacks',${i})">Edit</button><button class="btn-done" onclick="markDone('callbacks',${i})">Done</button><button class="btn-del" onclick="delItem('callbacks',${i})">\u2715</button></div></td>
+  </tr>`;}).join('');
+}
+
+function renderTasks(){
+  const q=(document.getElementById('tasks-search').value||'').toLowerCase();
+  const rows=data.tasks.filter(r=>!q||(r.task+(r.category||'')+(r.notes||'')).toLowerCase().includes(q));
+  const tbody=document.getElementById('tasks-body');
+  if(!rows.length){renderEmpty('tasks-body',5);return;}
+  tbody.innerHTML=rows.map(r=>{const i=data.tasks.indexOf(r);return`<tr>
+    <td style="font-weight:500">${r.task||'\u2014'}</td><td>${r.category||'\u2014'}</td>
+    <td class="${isOverdue(r.due)?'overdue':''}">${fmtDate(r.due)}</td>
+    <td class="notes-cell" onclick="toggleNotes(this)">${r.notes||'\u2014'}</td>
+    <td><div class="action-btns"><button class="btn-edit" onclick="openModal('tasks',${i})">Edit</button><button class="btn-done" onclick="markDone('tasks',${i})">Done</button><button class="btn-del" onclick="delItem('tasks',${i})">\u2715</button></div></td>
+  </tr>`;}).join('');
+}
+
+function renderScoreboard(){
+  const techs=getAllTechs();
+  const grid=document.getElementById('scoreboard-grid');
+  if(!techs.length){grid.innerHTML=`<div class="empty">No tech data yet.</div>`;return;}
+  grid.innerHTML=techs.map(tech=>{
+    // Collect open jobs from WO + Quoted + Scheduled, deduplicated by W/O #
+    const openByWO={};
+    data.wo.filter(r=>!r.completed&&r.tech===tech).forEach(r=>{
+      const key=r.wo_num||('wo-'+Math.random());
+      openByWO[key]={wo_num:r.wo_num,customer:r.customer||'\u2014',type:r.type||'\u2014',status:r.status,date:r.due,notes:r.notes||'',src:'WO'};
+    });
+    data.quoted.forEach(r=>{
+      if(!(r.techs||[]).includes(tech))return;
+      const key=r.wo_num||('q-'+Math.random());
+      if(!openByWO[key])openByWO[key]={wo_num:r.wo_num,customer:r.customer||'\u2014',type:r.type||'\u2014',status:r.status,date:r.date,notes:r.notes||'',src:'Quoted'};
+    });
+    data.scheduled.forEach(r=>{
+      if(r.tech!==tech)return;
+      const key=r.wo_num||('s-'+Math.random());
+      if(!openByWO[key])openByWO[key]={wo_num:r.wo_num,customer:r.customer||'\u2014',type:r.type||'\u2014',status:r.status,date:r.date,notes:r.notes||'',src:'Sched'};
+    });
+    const openJobs=Object.values(openByWO);
+    const overdueCount=openJobs.filter(j=>isOverdue(j.date)).length;
+    const callbacks=data.callbacks.filter(r=>r.tech===tech).length;
+    const partsOwed=data.parts.filter(r=>r.tech===tech).length;
+    // Completed from archive — match on tech or techs array
+    const completedJobs=data.archive.filter(r=>{
+      if(!r.item)return false;
+      const t=r.item.tech||'';
+      const ts=(r.item.techs||[]).filter(Boolean).join(', ');
+      return t===tech||ts===tech||ts.includes(tech)||t.includes(tech);
+    }).map(r=>({
+      wo_num:r.item.wo_num,
+      customer:r.item.customer||'\u2014',
+      type:r.item.type||r.type||'\u2014',
+      date:r.date,
+      cost_actual:r.item.cost_actual||null,
+      cost_quoted:r.item.cost_quoted||null
+    }));
+    const openRows=openJobs.length?openJobs.map(j=>`
+      <tr>
+        <td style="font-weight:500">${j.wo_num||'\u2014'}</td>
+        <td>${j.customer}</td>
+        <td>${typeBadge(j.type)}</td>
+        <td>${badge(j.status)}</td>
+        <td class="${isOverdue(j.date)?'overdue':''}">${fmtDate(j.date)}</td>
+        <td><span class="board-source-tag src-${j.src.toLowerCase()}">${j.src}</span></td>
+        <td class="notes-cell" onclick="toggleNotes(this)" style="max-width:140px">${j.notes||'\u2014'}</td>
+      </tr>`).join(''):`<tr><td colspan="7" style="text-align:center;color:#aaa;font-size:12px;padding:10px">No open jobs</td></tr>`;
+    const completedRows=completedJobs.length?completedJobs.map(j=>`
+      <tr>
+        <td style="font-weight:500">${j.wo_num||'\u2014'}</td>
+        <td>${j.customer}</td>
+        <td>${typeBadge(j.type)}</td>
+        <td style="color:#888">${fmtDate(j.date)}</td>
+        <td>${j.cost_actual?'$'+parseFloat(j.cost_actual).toLocaleString('en-US',{maximumFractionDigits:0}):j.cost_quoted?'$'+parseFloat(j.cost_quoted).toLocaleString('en-US',{maximumFractionDigits:0}):'\u2014'}</td>
+      </tr>`).join(''):`<tr><td colspan="5" style="text-align:center;color:#aaa;font-size:12px;padding:10px">No completed jobs yet</td></tr>`;
+    return`<div class="score-card-v2">
+      <div class="score-card-v2-header">
+        <div class="score-card-v2-name">${tech}</div>
+        <div class="score-summary">
+          <span class="score-pill">${openJobs.length} open</span>
+          ${overdueCount>0?`<span class="score-pill score-pill-red">${overdueCount} overdue</span>`:''}
+          ${callbacks>0?`<span class="score-pill score-pill-red">${callbacks} callback${callbacks!==1?'s':''}</span>`:''}
+          ${partsOwed>0?`<span class="score-pill">${partsOwed} part${partsOwed!==1?'s':''} pending</span>`:''}
+          <span class="score-pill score-pill-green">${completedJobs.length} completed</span>
+        </div>
+      </div>
+      <div class="score-section-label">Open W/Os &amp; Scheduled (${openJobs.length})</div>
+      <table class="score-inner-table">
+        <thead><tr><th>W/O #</th><th>Customer</th><th>Type</th><th>Status</th><th>Date</th><th>Src</th><th>Notes</th></tr></thead>
+        <tbody>${openRows}</tbody>
+      </table>
+      <div class="score-section-label" style="margin-top:12px">Completed (${completedJobs.length})</div>
+      <table class="score-inner-table">
+        <thead><tr><th>W/O #</th><th>Customer</th><th>Type</th><th>Completed</th><th>Cost</th></tr></thead>
+        <tbody>${completedRows}</tbody>
+      </table>
+    </div>`;
+  }).join('');
+}
+
+function renderPMTracker(){
+  const q=(document.getElementById('pm-search').value||'').toLowerCase();
+  const tech=document.getElementById('pm-tech-filter').value;
+  const pmJobs=[
+    ...data.wo.filter(r=>r.type==='PM'&&!r.completed).map(r=>({wo_num:r.wo_num,tech:r.tech,customer:r.customer||r.notes||'',status:r.status,date:r.due,hrs:r.pm_hrs,src:'WO'})),
+    ...data.quoted.filter(r=>r.type==='PM').map(r=>({wo_num:r.wo_num,tech:(r.techs||[]).filter(Boolean).join(', '),customer:r.customer||'',status:r.status,date:r.date,hrs:r.hrs_quoted,src:'Quoted'})),
+    ...data.scheduled.filter(r=>r.type==='PM').map(r=>({wo_num:r.wo_num,tech:r.tech,customer:r.customer||'',status:r.status,date:r.date,hrs:'',src:'Sched'}))
+  ].filter(r=>(!q||(r.wo_num+r.tech+r.customer).toLowerCase().includes(q))&&(!tech||r.tech===tech||r.tech.includes(tech)));
+  const grid=document.getElementById('pm-grid');
+  if(!pmJobs.length){grid.innerHTML=`<div class="empty" style="grid-column:1/-1">No PM jobs on board.</div>`;return;}
+  grid.innerHTML=pmJobs.map(r=>`<div class="pm-card">
+    <div class="pm-card-header">
+      <div>
+        <div class="pm-card-customer">${r.customer||'W/O #'+r.wo_num}</div>
+        <div class="pm-card-wo">W/O #${r.wo_num||'\u2014'}</div>
+      </div>
+      ${badge(r.status)}
+    </div>
+    <div class="pm-card-tech">Tech: ${r.tech||'\u2014'}</div>
+    <div class="pm-card-meta">
+      ${r.date?`<span class="pm-meta-item ${isOverdue(r.date)?'overdue':''}">&#128197; ${fmtDate(r.date)}</span>`:''}
+      ${r.hrs?`<span class="pm-meta-item">&#9203; ${r.hrs}h</span>`:''}
+      <span class="pm-meta-item">${r.src}</span>
+    </div>
+  </div>`).join('');
+}
+
+function renderCustomers(){
+  const q=(document.getElementById('customers-search').value||'').toLowerCase();
+  const STATUS_RANK={'In Progress':5,'Approved - Awaiting Parts':4,'Scheduled':3,'On Hold':2,'Quoted':1};
+  const woMap={};
+  const addOrUpdate=(wo_num,customer,status,date,tab)=>{
+    if(!wo_num||!customer||customer==='\u2014')return;
+    const rank=STATUS_RANK[status]||0;
+    if(!woMap[wo_num]||rank>(STATUS_RANK[woMap[wo_num].status]||0)){
+      woMap[wo_num]={wo_num,customer,status,date,tab};
+    }
+  };
+  data.wo.filter(r=>r.customer).forEach(r=>addOrUpdate(r.wo_num,r.customer,r.status,r.due,'wo'));
+  data.quoted.forEach(r=>addOrUpdate(r.wo_num,r.customer,r.status,r.date,'quoted'));
+  data.scheduled.forEach(r=>addOrUpdate(r.wo_num,r.customer,r.status,r.date,'scheduled'));
+  data.callbacks.forEach(r=>{
+    if(!r.customer||r.customer==='\u2014')return;
+    const key='cb-'+r.customer;
+    if(!woMap[key])woMap[key]={wo_num:null,customer:r.customer,status:'Callback',date:r.deadline,tab:'callbacks',isCallback:true};
+  });
+  const customerMap={};
+  Object.values(woMap).forEach(entry=>{
+    const key=entry.customer.toLowerCase();
+    if(!customerMap[key])customerMap[key]={name:entry.customer,open:[],completed:[]};
+    customerMap[key].open.push(entry);
+  });
+  data.archive.forEach(r=>{
+    if(!r.item||!r.item.customer)return;
+    const key=r.item.customer.toLowerCase();
+    if(!customerMap[key])customerMap[key]={name:r.item.customer,open:[],completed:[]};
+    customerMap[key].completed.push({wo_num:r.item.wo_num,label:r.label,date:r.date});
+  });
+  const list=document.getElementById('customers-list');
+  const entries=Object.values(customerMap).filter(c=>!q||c.name.toLowerCase().includes(q)).sort((a,b)=>a.name.localeCompare(b.name));
+  if(!entries.length){list.innerHTML=`<div class="empty">No customer data found.</div>`;return;}
+  list.innerHTML=entries.map(c=>{
+    const totalJobs=c.open.length+c.completed.length;
+    const openBadges=c.open.map(j=>{
+      if(j.isCallback)return`<span class="badge badge-callback" style="cursor:pointer" onclick="switchTab('callbacks')">Callback${j.date?' \u00b7 '+fmtDate(j.date):''}</span>`;
+      const statusClass=j.status==='Scheduled'?'badge-scheduled':j.status==='In Progress'?'badge-progress':j.status==='Approved - Awaiting Parts'?'badge-approved':'badge-quoted';
+      return`<span class="badge ${statusClass}" style="cursor:pointer" onclick="switchTab('${j.tab}')">W/O #${j.wo_num} \u00b7 ${j.status}${j.date?' \u00b7 '+fmtDate(j.date):''}</span>`;
+    }).join('');
+    const completedSection=c.completed.length?`
+      <div style="margin-top:8px;padding-top:8px;border-top:1px solid #f0f0f0">
+        <div style="font-size:11px;font-weight:500;color:#888;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.04em">Completed</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          ${c.completed.map(j=>`<span class="badge badge-completed" style="cursor:pointer;opacity:0.8" onclick="switchTab('archive')">W/O #${j.wo_num||'?'} \u00b7 ${fmtDate(j.date)}</span>`).join('')}
+        </div>
+      </div>`:'';
+    return`<div class="customer-card">
+      <div class="customer-card-header">
+        <div class="customer-card-name">${c.name}</div>
+        <span style="font-size:12px;color:#888">${totalJobs} job${totalJobs!==1?'s':''}</span>
+      </div>
+      <div class="customer-jobs">${openBadges||'<span style="font-size:12px;color:#aaa">No open jobs</span>'}</div>
+      ${completedSection}
+    </div>`;
+  }).join('');
+}
+
+function getArchiveDetailHTML(r){
+  const it=r.item||{};
+  const f=(label,val)=>val||val===0?`<div><div class="archive-field-label">${label}</div><div class="archive-field-value">${val}</div></div>`:'';
+  let html='<div class="archive-detail-panel">';
+  // ── W/O type ──
+  if(r.type==='wo'){
+    html+=`<div class="archive-detail-grid">
+      ${f('W/O #',it.wo_num)}${f('Tech',it.tech)}${f('Customer',it.customer)}
+      ${f('Job Type',it.type)}${f('Status',it.status)}${f('Due Date',fmtDate(it.due))}
+      ${it.pm_hrs?f('PM Hours',it.pm_hrs+'h'):''}${f('Created',fmtDate(it.created))}
+    </div>`;
+    if(it.notes){html+=`<div class="archive-field-label">Notes</div><div class="archive-notes-block">${it.notes}</div>`;}
+    if(it.log&&it.log.length){
+      html+=`<div class="archive-section-divider">Activity Log (${it.log.length})</div>`;
+      html+=it.log.map(e=>`<div class="archive-log-entry"><span class="archive-log-time">${e.ts}</span><span class="archive-log-msg">${e.msg}</span></div>`).join('');
+    }
+  }
+  // ── Quoted type ──
+  else if(r.type==='quoted'){
+    const techStr=(it.techs||[]).filter(Boolean).join(', ')||it.tech||'\u2014';
+    html+=`<div class="archive-detail-grid">
+      ${f('W/O #',it.wo_num)}${f('Customer',it.customer)}${f('Tech(s)',techStr)}
+      ${f('Job Type',it.type)}${f('Hrs Quoted',it.hrs_quoted)}${f('Cost Quoted',it.cost_quoted?'$'+parseFloat(it.cost_quoted).toLocaleString('en-US',{maximumFractionDigits:0}):null)}
+      ${f('Hrs Actual',it.hrs_actual)}${f('Cost Actual',it.cost_actual?'$'+parseFloat(it.cost_actual).toLocaleString('en-US',{maximumFractionDigits:0}):null)}
+      ${it.variance?f('Variance',it.variance.toUpperCase()):''}${it.over_reason?f('Over Reason',it.over_reason):''}
+    </div>`;
+    if(it.notes){html+=`<div class="archive-field-label">Original Notes</div><div class="archive-notes-block">${it.notes}</div>`;}
+    if(it.completion_notes){html+=`<div class="archive-field-label" style="margin-top:6px">Completion Notes</div><div class="archive-notes-block">${it.completion_notes}</div>`;}
+  }
+  // ── Scheduled type ──
+  else if(r.type==='scheduled'){
+    html+=`<div class="archive-detail-grid">
+      ${f('W/O #',it.wo_num)}${f('Tech',it.tech)}${f('Customer',it.customer)}
+      ${f('Job Type',it.type)}${f('Status',it.status)}${f('Sched. Date',fmtDate(it.date))}
+    </div>`;
+    if(it.notes){html+=`<div class="archive-field-label">Notes</div><div class="archive-notes-block">${it.notes}</div>`;}
+  }
+  // ── Parts type ──
+  else if(r.type==='parts'){
+    html+=`<div class="archive-detail-grid">
+      ${f('W/O #',it.wo_num)}${f('Tech',it.tech)}${f('Part',it.part)}
+      ${f('Supplier',it.supplier)}${f('Ordered',fmtDate(it.ordered))}${f('ETA',fmtDate(it.eta))}
+    </div>`;
+  }
+  // ── Callback type ──
+  else if(r.type==='callbacks'){
+    html+=`<div class="archive-detail-grid">
+      ${f('Customer',it.customer)}${f('Tech',it.tech)}
+      ${f('Date Flagged',fmtDate(it.flagged))}${f('Deadline',fmtDate(it.deadline))}
+    </div>`;
+    if(it.reason){html+=`<div class="archive-field-label">Reason</div><div class="archive-notes-block">${it.reason}</div>`;}
+  }
+  // ── Task type ──
+  else if(r.type==='tasks'){
+    html+=`<div class="archive-detail-grid">
+      ${f('Task',it.task)}${f('Category',it.category)}${f('Due',fmtDate(it.due))}
+    </div>`;
+    if(it.notes){html+=`<div class="archive-field-label">Notes</div><div class="archive-notes-block">${it.notes}</div>`;}
+  }
+  // ── Fallback: show all non-empty keys ──
+  else{
+    const pairs=Object.entries(it).filter(([k,v])=>v&&k!=='log');
+    html+=`<div class="archive-detail-grid">${pairs.map(([k,v])=>f(k,v)).join('')}</div>`;
+  }
+  html+='</div>';
+  return html;
+}
+
+function toggleArchiveDetail(i){
+  const row=document.getElementById('archive-detail-'+i);
+  const btn=document.getElementById('archive-expand-btn-'+i);
+  if(!row)return;
+  const open=row.style.display==='table-row';
+  row.style.display=open?'none':'table-row';
+  if(btn)btn.textContent=open?'Details':'Hide';
+}
+
+function renderArchive(){
+  const tbody=document.getElementById('archive-body');
+  if(!data.archive.length){renderEmpty('archive-body',4);return;}
+  tbody.innerHTML=data.archive.map((r,i)=>`
+    <tr>
+      <td><span class="badge badge-open">${r.type}</span></td>
+      <td>${r.label}</td>
+      <td>${fmtDate(r.date)}</td>
+      <td><div class="action-btns">
+        <button class="archive-expand-btn" id="archive-expand-btn-${i}" onclick="toggleArchiveDetail(${i})">Details</button>
+        <button class="btn-del" onclick="delArchive(${i})">\u2715</button>
+      </div></td>
+    </tr>
+    <tr id="archive-detail-${i}" class="archive-detail-row" style="display:none">
+      <td colspan="4">${getArchiveDetailHTML(r)}</td>
+    </tr>`).join('');
+}
+
+function openLog(idx){
+  const wo=data.wo[idx];
+  const entries=(wo.log&&wo.log.length)?wo.log.map(e=>`<div class="log-entry"><span class="log-time">${e.ts}</span><span class="log-msg">${e.msg}</span></div>`).join(''):`<div class="log-empty">No activity logged yet.</div>`;
+  document.getElementById('log-modal-content').innerHTML=`<h3>Activity Log \u2014 W/O #${wo.wo_num||'?'}</h3><div class="activity-log">${entries}</div><div class="modal-btns"><button class="btn-cancel" onclick="closeLogModal()">Close</button></div>`;
+  document.getElementById('log-modal-bg').classList.add('open');
+}
+function closeLogModal(){document.getElementById('log-modal-bg').classList.remove('open');}
+
+function onTypeChange(){
+  const t=document.getElementById('f-type');const pmRow=document.getElementById('pm-hrs-row');
+  if(!t||!pmRow)return;pmRow.classList.toggle('show',t.value==='PM');
+}
+
+function getModalHTML(type,item){
+  const v=(f,d='')=>item?(item[f]||d):d;
+  const sel=(f,opts)=>opts.map(o=>`<option${(item?item[f]:'')===o?' selected':''}>${o}</option>`).join('');
+  if(type==='wo'){
+    const isCompleted=item&&item.completed;
+    return`<h3>${item?'Edit':'Add'} Work Order</h3>
+    ${item?`<div class="checkbox-row"><input type="checkbox" id="f-completed"${isCompleted?' checked':''}><label for="f-completed">Job Completed</label></div>`:''}
+    <div class="form-grid">
+      <div class="form-row"><label>W/O Number</label><input id="f-wo_num" value="${v('wo_num')}" placeholder="e.g. 10432"></div>
+      <div class="form-row"><label>Tech Name</label><input id="f-tech" value="${v('tech')}" placeholder="e.g. Mike"></div>
+      <div class="form-row"><label>Customer / Site</label><input id="f-customer" value="${v('customer')}" placeholder="e.g. Bedford HS"></div>
+      <div class="form-row"><label>Job Type</label><select id="f-type" onchange="onTypeChange()">${sel('type',['Service','PM','Install','Quoted'])}</select></div>
+      <div class="form-row"><label>Status</label><select id="f-status">${sel('status',['In Progress','Waiting on Parts','Parts Arrived - Schedule Now','Waiting on Customer','Needs Follow-up','Needs Quote'])}</select></div>
+      <div class="form-row"><label>Expected Close</label><input type="date" id="f-due" value="${v('due')}"></div>
+    </div>
+    <div class="form-row pm-hrs-row${v('type')==='PM'?' show':''}" id="pm-hrs-row"><label>PM Hours</label><input id="f-pm_hrs" type="number" step="0.5" value="${v('pm_hrs')}" placeholder="e.g. 2.5"></div>
+    <div class="form-row"><label>Notes</label><textarea id="f-notes">${v('notes')}</textarea></div>
+    <div class="modal-btns"><button class="btn-cancel" onclick="closeModal()">Cancel</button><button class="btn-save" onclick="saveItem('wo')">${item?'Save':'Add'}</button></div>`;
+  }
+  if(type==='quoted'){
+    const techs=item&&item.techs?item.techs:[''];
+    const techInputs=techs.map((t,i)=>`<div class="tech-entry" id="tech-entry-${i}"><input value="${t}" placeholder="Tech name" class="tech-input"><button type="button" class="btn-remove-tech" onclick="removeTech(${i})">\u2715</button></div>`).join('');
+    return`<h3>${item?'Edit':'Add'} Quoted Job</h3>
+    <div class="form-grid">
+      <div class="form-row"><label>W/O Number</label><input id="f-wo_num" value="${v('wo_num')}" placeholder="e.g. 10432"></div>
+      <div class="form-row"><label>Customer / Site</label><input id="f-customer" value="${v('customer')}" placeholder="e.g. LRCC Cat"></div>
+      <div class="form-row"><label>Job Type</label><select id="f-type">${sel('type',['Service','PM','Install','Quoted'])}</select></div>
+      <div class="form-row"><label>Status</label><select id="f-status">${sel('status',['Scheduled','In Progress','Approved - Awaiting Parts','On Hold'])}</select></div>
+      <div class="form-row"><label>Hrs Quoted</label><input id="f-hrs_quoted" type="number" step="0.5" value="${v('hrs_quoted')}" placeholder="e.g. 8"></div>
+      <div class="form-row"><label>Cost Quoted ($)</label><input id="f-cost_quoted" type="number" value="${v('cost_quoted')}" placeholder="e.g. 4200"></div>
+      <div class="form-row"><label>Scheduled Date</label><input type="date" id="f-date" value="${v('date')}"></div>
+    </div>
+    <div class="form-row"><label>Tech(s)</label><div class="tech-list" id="tech-list">${techInputs}</div><button type="button" class="btn-add-tech" onclick="addTech()">+ Add tech</button></div>
+    <div class="form-row"><label>Notes</label><textarea id="f-notes">${v('notes')}</textarea></div>
+    <div class="modal-btns"><button class="btn-cancel" onclick="closeModal()">Cancel</button><button class="btn-save" onclick="saveItem('quoted')">${item?'Save':'Add'}</button></div>`;
+  }
+  if(type==='parts')return`<h3>${item?'Edit':'Add'} Parts Order</h3>
+    <div class="form-grid">
+      <div class="form-row"><label>W/O Number</label><input id="f-wo_num" value="${v('wo_num')}" placeholder="e.g. 10432"></div>
+      <div class="form-row"><label>Tech Name</label><input id="f-tech" value="${v('tech')}" placeholder="e.g. Mike"></div>
+      <div class="form-row"><label>Part Name</label><input id="f-part" value="${v('part')}" placeholder="e.g. TXV R410A"></div>
+      <div class="form-row"><label>Supplier</label><input id="f-supplier" value="${v('supplier')}" placeholder="e.g. Johnstone"></div>
+      <div class="form-row"><label>Order Date</label><input type="date" id="f-ordered" value="${v('ordered')}"></div>
+      <div class="form-row"><label>ETA</label><input type="date" id="f-eta" value="${v('eta')}"></div>
+    </div>
+    <div class="modal-btns"><button class="btn-cancel" onclick="closeModal()">Cancel</button><button class="btn-save" onclick="saveItem('parts')">${item?'Save':'Add'}</button></div>`;
+  if(type==='scheduled')return`<h3>${item?'Edit':'Add'} Scheduled Job</h3>
+    <div class="form-grid">
+      <div class="form-row"><label>W/O Number</label><input id="f-wo_num" value="${v('wo_num')}" placeholder="e.g. 10432"></div>
+      <div class="form-row"><label>Tech</label><input id="f-tech" value="${v('tech')}" placeholder="e.g. Dave"></div>
+      <div class="form-row"><label>Customer</label><input id="f-customer" value="${v('customer')}" placeholder="Customer name"></div>
+      <div class="form-row"><label>Job Type</label><select id="f-type">${sel('type',['Service','PM','Install','Quoted'])}</select></div>
+      <div class="form-row"><label>Status</label><select id="f-status">${sel('status',['Approved - Awaiting Parts','Scheduled','On Hold'])}</select></div>
+      <div class="form-row"><label>Scheduled Date</label><input type="date" id="f-date" value="${v('date')}"></div>
+    </div>
+    <div class="form-row"><label>Notes</label><textarea id="f-notes">${v('notes')}</textarea></div>
+    <div class="modal-btns"><button class="btn-cancel" onclick="closeModal()">Cancel</button><button class="btn-save" onclick="saveItem('scheduled')">${item?'Save':'Add'}</button></div>`;
+  if(type==='callbacks')return`<h3>${item?'Edit':'Add'} Callback</h3>
+    <div class="form-grid">
+      <div class="form-row"><label>Customer</label><input id="f-customer" value="${v('customer')}" placeholder="Customer name"></div>
+      <div class="form-row"><label>Tech</label><input id="f-tech" value="${v('tech')}" placeholder="Tech assigned"></div>
+      <div class="form-row"><label>Date Flagged</label><input type="date" id="f-flagged" value="${v('flagged')}"></div>
+      <div class="form-row"><label>Deadline</label><input type="date" id="f-deadline" value="${v('deadline')}"></div>
+    </div>
+    <div class="form-row"><label>Reason</label><textarea id="f-reason">${v('reason')}</textarea></div>
+    <div class="modal-btns"><button class="btn-cancel" onclick="closeModal()">Cancel</button><button class="btn-save" onclick="saveItem('callbacks')">${item?'Save':'Add'}</button></div>`;
+  if(type==='tasks')return`<h3>${item?'Edit':'Add'} Task</h3>
+    <div class="form-grid">
+      <div class="form-row"><label>Task</label><input id="f-task" value="${v('task')}" placeholder="What needs to get done"></div>
+      <div class="form-row"><label>Category</label><select id="f-category">${sel('category',['Admin','Meeting','Customer','HR','Equipment','Other'])}</select></div>
+      <div class="form-row"><label>Due Date</label><input type="date" id="f-due" value="${v('due')}"></div>
+    </div>
+    <div class="form-row"><label>Notes</label><textarea id="f-notes">${v('notes')}</textarea></div>
+    <div class="modal-btns"><button class="btn-cancel" onclick="closeModal()">Cancel</button><button class="btn-save" onclick="saveItem('tasks')">${item?'Save':'Add'}</button></div>`;
+}
+
+function addTech(){const list=document.getElementById('tech-list');const idx=list.children.length;const div=document.createElement('div');div.className='tech-entry';div.id='tech-entry-'+idx;div.innerHTML=`<input value="" placeholder="Tech name" class="tech-input"><button type="button" class="btn-remove-tech" onclick="removeTech(${idx})">\u2715</button>`;list.appendChild(div);}
+function removeTech(idx){const el=document.getElementById('tech-entry-'+idx);if(el)el.remove();}
+function getTechs_inputs(){return[...document.querySelectorAll('.tech-input')].map(i=>i.value.trim()).filter(Boolean);}
+
+function openModal(type,idx){editingType=type;editingIndex=idx;const item=idx!==null?data[type][idx]:null;document.getElementById('modal-content').innerHTML=getModalHTML(type,item);document.getElementById('modal-bg').classList.add('open');}
+function closeModal(){document.getElementById('modal-bg').classList.remove('open');editingIndex=null;editingType=null;}
+function g(id){const el=document.getElementById(id);return el?el.value.trim():'';}
+function gb(id){const el=document.getElementById(id);return el?el.checked:false;}
+
+function saveItem(type){
+  let item={};
+  if(type==='wo'){
+    const isNew=editingIndex===null;const existing=isNew?{}:data.wo[editingIndex];
+    const prevStatus=existing.status||'';const newStatus=g('f-status');
+    item={wo_num:g('f-wo_num'),tech:g('f-tech'),customer:g('f-customer'),type:g('f-type'),status:newStatus,due:g('f-due'),notes:g('f-notes'),pm_hrs:g('f-pm_hrs'),completed:gb('f-completed'),created:existing.created||today(),log:existing.log||[]};
+    if(!isNew&&prevStatus&&prevStatus!==newStatus)logActivity(item,`Status changed: ${prevStatus} \u2192 ${newStatus}`);
+    else if(isNew)logActivity(item,`W/O created`);
+    else logActivity(item,`W/O updated`);
+  }
+  else if(type==='quoted'){item={wo_num:g('f-wo_num'),customer:g('f-customer'),type:g('f-type'),status:g('f-status'),hrs_quoted:g('f-hrs_quoted'),cost_quoted:g('f-cost_quoted'),date:g('f-date'),techs:getTechs_inputs(),notes:g('f-notes')};syncQuotedToScheduled(item);}
+  else if(type==='parts')item={wo_num:g('f-wo_num'),tech:g('f-tech'),part:g('f-part'),supplier:g('f-supplier'),ordered:g('f-ordered'),eta:g('f-eta')};
+  else if(type==='scheduled')item={wo_num:g('f-wo_num'),tech:g('f-tech'),customer:g('f-customer'),type:g('f-type'),status:g('f-status'),date:g('f-date'),notes:g('f-notes')};
+  else if(type==='callbacks')item={customer:g('f-customer'),tech:g('f-tech'),flagged:g('f-flagged'),deadline:g('f-deadline'),reason:g('f-reason')};
+  else if(type==='tasks')item={task:g('f-task'),category:g('f-category'),due:g('f-due'),notes:g('f-notes')};
+  if(editingIndex!==null)data[type][editingIndex]=item;else data[type].push(item);
+  updateStats();updateTechFilters();scheduleSave();closeModal();switchTab(type);
+}
+
+let currentCompletingIdx=null;
+function completeQuoted(idx){
+  currentCompletingIdx=idx;const job=data.quoted[idx];
+  document.getElementById('completion-modal-content').innerHTML=`
+    <h3>Complete Quoted Job \u2014 W/O #${job.wo_num||''}</h3>
+    <div class="completion-section"><h4>Quote Summary</h4>
+      <div style="display:flex;gap:24px;font-size:13px">
+        <div><div style="color:#666;margin-bottom:2px;font-size:11px">Hrs Quoted</div><div style="font-weight:500">${job.hrs_quoted||'\u2014'}</div></div>
+        <div><div style="color:#666;margin-bottom:2px;font-size:11px">Cost Quoted</div><div style="font-weight:500">${fmtCurrency(job.cost_quoted)}</div></div>
+        <div><div style="color:#666;margin-bottom:2px;font-size:11px">Techs</div><div style="font-weight:500">${(job.techs||[]).filter(Boolean).join(', ')||'\u2014'}</div></div>
+      </div>
+    </div>
+    <div class="form-grid">
+      <div class="form-row"><label>Actual Hrs</label><input id="c-hrs_actual" type="number" step="0.5" placeholder="e.g. 9.5" oninput="calcVariance()"></div>
+      <div class="form-row"><label>Actual Cost ($)</label><input id="c-cost_actual" type="number" placeholder="e.g. 4800" oninput="calcVariance()"></div>
+    </div>
+    <div id="variance-display" style="margin-bottom:12px"></div>
+    <div class="form-row" id="reason-row" style="display:none"><label>Reason Over Quote</label>
+      <select id="c-reason"><option value="">Select reason...</option><option>Sales missed item on quote</option><option>Tech did not have stock</option><option>Lack of knowledge on task</option><option>Late site access</option><option>Unforeseen site conditions</option><option>Customer added scope</option><option>Other</option></select>
+    </div>
+    <div class="form-row"><label>Completion Notes</label><textarea id="c-notes" placeholder="Any final notes..."></textarea></div>
+    <div class="modal-btns"><button class="btn-cancel" onclick="closeCompletionModal()">Cancel</button><button class="btn-save" onclick="finalizeQuoted()">Complete Job</button></div>`;
+  document.getElementById('completion-modal-bg').classList.add('open');
+}
+function getCurrentCompletingJob(){return currentCompletingIdx!==null?data.quoted[currentCompletingIdx]:null;}
+function calcVariance(){
+  const job=getCurrentCompletingJob();if(!job)return;
+  const qHrs=parseFloat(job.hrs_quoted)||0,qCost=parseFloat(job.cost_quoted)||0;
+  const aHrs=parseFloat(document.getElementById('c-hrs_actual')?.value)||0,aCost=parseFloat(document.getElementById('c-cost_actual')?.value)||0;
+  let html='';let showReason=false;
+  if(aHrs>0||aCost>0){
+    const hrsDiff=aHrs-qHrs,costDiff=aCost-qCost;
+    const over=hrsDiff>0.05||costDiff>0.5,under=hrsDiff<-0.05&&costDiff<-0.5;
+    const cls=over?'variance-over':under?'variance-under':'variance-even';
+    const label=over?'OVER QUOTE':under?'UNDER QUOTE':'ON BUDGET';
+    const hrsStr=hrsDiff===0?'\u00b10':(hrsDiff>0?'+':'')+hrsDiff.toFixed(1)+' hrs';
+    const costStr=(costDiff>=0?'+':'-')+'$'+Math.abs(costDiff).toLocaleString('en-US',{maximumFractionDigits:0});
+    html=`<div class="variance-display ${cls}">${label} &nbsp;|&nbsp; Hrs: ${hrsStr} &nbsp;|&nbsp; Cost: ${costStr}</div>`;
+    if(over)showReason=true;
+  }
+  document.getElementById('variance-display').innerHTML=html;
+  document.getElementById('reason-row').style.display=showReason?'block':'none';
+}
+function finalizeQuoted(){
+  const job=getCurrentCompletingJob();if(!job)return;
+  const aHrs=parseFloat(document.getElementById('c-hrs_actual')?.value)||null;
+  const aCost=parseFloat(document.getElementById('c-cost_actual')?.value)||null;
+  const reason=document.getElementById('c-reason')?.value||'';
+  const notes=document.getElementById('c-notes')?.value||'';
+  const hrsDiff=aHrs?(aHrs-(parseFloat(job.hrs_quoted)||0)):null;
+  const variance=hrsDiff!==null?(hrsDiff>0.05?'over':hrsDiff<-0.05?'under':'on budget'):'unknown';
+  const techStr=(job.techs||[]).filter(Boolean).join(', ')||'\u2014';
+  const archiveEntry={type:'quoted',label:`W/O #${job.wo_num} \u2014 ${job.customer||''} (${techStr}) \u2014 ${variance.toUpperCase()}`,date:today(),item:{...job,hrs_actual:aHrs,cost_actual:aCost,variance,over_reason:reason,completion_notes:notes}};
+  // Remove any existing archive entry for this W/O to avoid duplication
+  if(job.wo_num)data.archive=data.archive.filter(a=>!(a.item&&a.item.wo_num===job.wo_num));
+  data.archive.unshift(archiveEntry);
+  // Also remove from W/O tab if exists
+  data.wo=data.wo.filter(w=>w.wo_num!==job.wo_num);
+  removeSyncedScheduled(job.wo_num);
+  data.quoted.splice(currentCompletingIdx,1);currentCompletingIdx=null;
+  updateStats();updateTechFilters();scheduleSave();closeCompletionModal();switchTab('quoted');
+}
+function closeCompletionModal(){document.getElementById('completion-modal-bg').classList.remove('open');currentCompletingIdx=null;}
+
+function markDone(type,idx){
+  const item=data[type][idx];
+  const wo_num=item.wo_num;
+  // Don't archive if already archived
+  if(wo_num&&!archiveNotDupe(wo_num)){
+    // Just remove from current tab without re-archiving
+    data[type].splice(idx,1);
+    // Also clean up linked tabs
+    if(type==='wo'){removeSyncedScheduled(wo_num);data.quoted=data.quoted.filter(q=>q.wo_num!==wo_num);}
+    if(type==='quoted'){removeSyncedScheduled(wo_num);data.wo=data.wo.filter(w=>w.wo_num!==wo_num);}
+    if(type==='scheduled'&&item._quoted_ref){data.quoted=data.quoted.filter(q=>q.wo_num!==wo_num);}
+    updateStats();updateTechFilters();scheduleSave();switchTab(type);
+    return;
+  }
+  const labels={wo:r=>`W/O #${r.wo_num} \u2014 ${r.customer||r.tech}`,parts:r=>`${r.part} (W/O #${r.wo_num})`,scheduled:r=>`${r.customer||''} \u2014 W/O #${r.wo_num}`,callbacks:r=>`Callback: ${r.customer}`,tasks:r=>r.task};
+  data.archive.unshift({type,label:labels[type](item),date:today(),item});
+  // Clean up linked tabs when completing a WO
+  if(type==='wo'){
+    removeSyncedScheduled(wo_num);
+    data.quoted=data.quoted.filter(q=>q.wo_num!==wo_num);
+  }
+  if(type==='quoted'){
+    removeSyncedScheduled(wo_num);
+    data.wo=data.wo.filter(w=>w.wo_num!==wo_num);
+  }
+  data[type].splice(idx,1);
+  updateStats();updateTechFilters();scheduleSave();switchTab(type);
+}
+function delItem(type,idx){
+  if(type==='quoted'){const wo_num=data.quoted[idx]?.wo_num;if(wo_num)removeSyncedScheduled(wo_num);}
+  data[type].splice(idx,1);updateStats();updateTechFilters();scheduleSave();switchTab(type);
+}
+function delArchive(idx){data.archive.splice(idx,1);scheduleSave();renderArchive();}
+
+// ── PDF Export with Filters ───────────────────────────────
+function openPDFModal(){
+  const techs=getAllTechs();
+  const techOpts=techs.map(t=>`<option value="${t}">${t}</option>`).join('');
+  document.getElementById('pdf-modal-content').innerHTML=`
+    <h3>Export PDF Report</h3>
+    <div class="pdf-filter-section">
+      <h4>Sections to Include</h4>
+      <div class="pdf-checkbox-group">
+        <label class="pdf-checkbox-item"><input type="checkbox" id="pf-completed" checked> Completed / Billable Jobs</label>
+        <label class="pdf-checkbox-item"><input type="checkbox" id="pf-wo" checked> Open Work Orders</label>
+        <label class="pdf-checkbox-item"><input type="checkbox" id="pf-quoted" checked> Quoted Jobs</label>
+        <label class="pdf-checkbox-item"><input type="checkbox" id="pf-parts" checked> Parts Pipeline</label>
+        <label class="pdf-checkbox-item"><input type="checkbox" id="pf-scheduled" checked> Scheduled Jobs</label>
+        <label class="pdf-checkbox-item"><input type="checkbox" id="pf-callbacks" checked> Callbacks</label>
+        <label class="pdf-checkbox-item"><input type="checkbox" id="pf-tasks" checked> My Tasks</label>
+      </div>
+    </div>
+    <div class="pdf-filter-section">
+      <h4>Filters (applies to all sections)</h4>
+      <div class="pdf-filter-grid">
+        <div class="form-row"><label>Tech</label>
+          <select id="pf-tech"><option value="">All Techs</option>${techOpts}</select>
+        </div>
+        <div class="form-row"><label>Job Type</label>
+          <select id="pf-type"><option value="">All Types</option><option>Service</option><option>PM</option><option>Install</option><option>Quoted</option></select>
+        </div>
+        <div class="form-row"><label>Date From</label><input type="date" id="pf-date-from"></div>
+        <div class="form-row"><label>Date To</label><input type="date" id="pf-date-to"></div>
+      </div>
+    </div>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closePDFModal()">Cancel</button>
+      <button class="btn-save" onclick="exportPDF()">Generate PDF</button>
+    </div>`;
+  document.getElementById('pdf-modal-bg').classList.add('open');
+}
+function closePDFModal(){document.getElementById('pdf-modal-bg').classList.remove('open');}
+
+function exportPDF(){
+  const inclCompleted=document.getElementById('pf-completed')?.checked!==false;
+  const inclWO=document.getElementById('pf-wo')?.checked!==false;
+  const inclQuoted=document.getElementById('pf-quoted')?.checked!==false;
+  const inclParts=document.getElementById('pf-parts')?.checked!==false;
+  const inclScheduled=document.getElementById('pf-scheduled')?.checked!==false;
+  const inclCallbacks=document.getElementById('pf-callbacks')?.checked!==false;
+  const inclTasks=document.getElementById('pf-tasks')?.checked!==false;
+  const fTech=document.getElementById('pf-tech')?.value||'';
+  const fType=document.getElementById('pf-type')?.value||'';
+  const fDateFrom=document.getElementById('pf-date-from')?.value||'';
+  const fDateTo=document.getElementById('pf-date-to')?.value||'';
+
+  const inDateRange=(d)=>{if(!d)return true;if(fDateFrom&&d<fDateFrom)return false;if(fDateTo&&d>fDateTo)return false;return true;};
+  const techMatch=(tech)=>!fTech||(tech||'')===fTech||(tech||'').includes(fTech);
+  const typeMatch=(type)=>!fType||type===fType;
+
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  const now=new Date();let y=15;const pageW=210,margin=14,colW=pageW-margin*2;
+
+  doc.setFontSize(16);doc.setFont(undefined,'bold');doc.text('Accutemp Ops Report',margin,y);y+=7;
+  doc.setFontSize(10);doc.setFont(undefined,'normal');doc.setTextColor(100);
+  let subtitle=`Generated ${now.toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})}`;
+  if(fTech)subtitle+=` \u2014 Tech: ${fTech}`;
+  if(fType)subtitle+=` \u2014 Type: ${fType}`;
+  if(fDateFrom||fDateTo)subtitle+=` \u2014 ${fDateFrom?fmtDate(fDateFrom):'start'} to ${fDateTo?fmtDate(fDateTo):'today'}`;
+  doc.text(subtitle,margin,y);y+=10;doc.setTextColor(0);
+
+  function sH(title,color){
+    if(color){doc.setFillColor(...color);}else{doc.setFillColor(245,245,243);}
+    doc.rect(margin,y-4,colW,7,'F');doc.setFont(undefined,'bold');doc.setFontSize(11);doc.text(title,margin,y);y+=7;doc.setFont(undefined,'normal');doc.setFontSize(9);
+  }
+  function rowW(cells,widths){let x=margin;for(let i=0;i<cells.length;i++){doc.text(String(cells[i]||'\u2014').substring(0,26),x,y);x+=widths[i];}y+=5;if(y>270){doc.addPage();y=15;}}
+  function tH(cols,widths){doc.setFont(undefined,'bold');doc.setFontSize(8);doc.setTextColor(100);let x=margin;cols.forEach((c,i)=>{doc.text(c,x,y);x+=widths[i];});y+=5;doc.setTextColor(0);doc.setFont(undefined,'normal');doc.setFontSize(9);}
+
+  // ── Completed / Billable Jobs ──────────────────────────
+  if(inclCompleted){
+    const billable=data.archive.filter(r=>{
+      if(!r.item)return false;
+      const item=r.item;
+      const tech=item.tech||(item.techs||[]).join(', ')||'';
+      const tMatch=techMatch(tech);
+      const tyMatch=typeMatch(item.type);
+      const dMatch=inDateRange(r.date);
+      return tMatch&&tyMatch&&dMatch;
+    });
+    sH(`Completed / Billable Jobs (${billable.length})`,[230,245,235]);
+    if(billable.length){
+      tH(['W/O #','Customer','Tech','Type','Completed','Cost Q','Cost Actual'],[22,35,22,16,22,22,colW-139]);
+      let totalCostQ=0,totalCostA=0;
+      billable.forEach(r=>{
+        const it=r.item;
+        const tech=it.tech||(it.techs||[]).filter(Boolean).join(', ')||'\u2014';
+        const cq=parseFloat(it.cost_quoted)||0;
+        const ca=parseFloat(it.cost_actual)||0;
+        if(cq)totalCostQ+=cq;
+        if(ca)totalCostA+=ca;
+        const cqStr=cq?'$'+cq.toLocaleString('en-US',{maximumFractionDigits:0}):'\u2014';
+        const caStr=ca?'$'+ca.toLocaleString('en-US',{maximumFractionDigits:0}):'\u2014';
+        rowW([it.wo_num,it.customer||'\u2014',tech,it.type||r.type,fmtDate(r.date),cqStr,caStr],[22,35,22,16,22,22,colW-139]);
+      });
+      // Totals line
+      doc.setFont(undefined,'bold');doc.setFontSize(9);
+      const totalQStr=totalCostQ?'$'+totalCostQ.toLocaleString('en-US',{maximumFractionDigits:0}):'';
+      const totalAStr=totalCostA?'$'+totalCostA.toLocaleString('en-US',{maximumFractionDigits:0}):'';
+      doc.text(`TOTAL: ${billable.length} jobs`,margin,y);
+      if(totalQStr)doc.text(`Quoted: ${totalQStr}`,margin+110,y);
+      if(totalAStr)doc.text(`Actual: ${totalAStr}`,margin+140,y);
+      doc.setFont(undefined,'normal');
+      y+=7;
+    }else{doc.setTextColor(150);doc.text('No completed jobs in this date range',margin,y);doc.setTextColor(0);y+=6;}
+    y+=4;
+  }
+
+  if(inclWO){
+    const rows=data.wo.filter(r=>!r.completed&&techMatch(r.tech)&&typeMatch(r.type)&&inDateRange(r.due));
+    sH(`Open Work Orders (${rows.length})`);
+    if(rows.length){tH(['W/O #','Customer','Tech','Type','Status','Due','Age'],[22,35,22,16,44,20,colW-159]);rows.forEach(r=>{const age=calcAge(r.created);rowW([r.wo_num,r.customer||'\u2014',r.tech,r.type,r.status,fmtDate(r.due),age!==null?age+'d':'\u2014'],[22,35,22,16,44,20,colW-159]);});}
+    else{doc.setTextColor(150);doc.text('No matching work orders',margin,y);doc.setTextColor(0);y+=6;}
+    y+=4;
+  }
+  if(inclQuoted){
+    const rows=data.quoted.filter(r=>techMatch((r.techs||[]).join(','))&&typeMatch(r.type)&&inDateRange(r.date));
+    sH(`Quoted Jobs (${rows.length})`);
+    if(rows.length){tH(['W/O #','Customer','Techs','Hrs Q','Cost Q','Status'],[22,40,32,15,25,colW-134]);rows.forEach(r=>rowW([r.wo_num,r.customer,(r.techs||[]).filter(Boolean).join(', '),r.hrs_quoted,r.cost_quoted?'$'+parseInt(r.cost_quoted).toLocaleString():'\u2014',r.status],[22,40,32,15,25,colW-134]));}
+    else{doc.setTextColor(150);doc.text('No matching quoted jobs',margin,y);doc.setTextColor(0);y+=6;}
+    y+=4;
+  }
+  if(inclParts){
+    const rows=data.parts.filter(r=>techMatch(r.tech)&&inDateRange(r.eta));
+    sH(`Parts Pipeline (${rows.length})`);
+    if(rows.length){tH(['W/O #','Tech','Part','Supplier','ETA'],[22,28,55,28,colW-133]);rows.forEach(r=>rowW([r.wo_num,r.tech,r.part,r.supplier,fmtDate(r.eta)],[22,28,55,28,colW-133]));}
+    else{doc.setTextColor(150);doc.text('No matching parts',margin,y);doc.setTextColor(0);y+=6;}
+    y+=4;
+  }
+  if(inclScheduled){
+    const rows=data.scheduled.filter(r=>techMatch(r.tech)&&typeMatch(r.type)&&inDateRange(r.date));
+    sH(`Scheduled Jobs (${rows.length})`);
+    if(rows.length){tH(['W/O #','Tech','Customer','Type','Status','Date'],[22,28,40,20,45,colW-155]);rows.forEach(r=>rowW([r.wo_num,r.tech,r.customer,r.type,r.status,fmtDate(r.date)],[22,28,40,20,45,colW-155]));}
+    else{doc.setTextColor(150);doc.text('No matching scheduled jobs',margin,y);doc.setTextColor(0);y+=6;}
+    y+=4;
+  }
+  if(inclCallbacks){
+    const rows=data.callbacks.filter(r=>techMatch(r.tech)&&inDateRange(r.deadline));
+    sH(`Callbacks (${rows.length})`);
+    if(rows.length){tH(['Customer','Tech','Deadline'],[60,40,colW-100]);rows.forEach(r=>rowW([r.customer,r.tech,fmtDate(r.deadline)],[60,40,colW-100]));}
+    else{doc.setTextColor(150);doc.text('No matching callbacks',margin,y);doc.setTextColor(0);y+=6;}
+    y+=4;
+  }
+  if(inclTasks){
+    const rows=data.tasks.filter(r=>inDateRange(r.due));
+    sH(`My Tasks (${rows.length})`);
+    if(rows.length){tH(['Task','Category','Due'],[80,35,colW-115]);rows.forEach(r=>rowW([r.task,r.category,fmtDate(r.due)],[80,35,colW-115]));}
+    else{doc.setTextColor(150);doc.text('No matching tasks',margin,y);doc.setTextColor(0);y+=6;}
+  }
+
+  const datePart=now.toISOString().split('T')[0];
+  const techPart=fTech?`-${fTech}`:'';
+  doc.save(`Accutemp-Ops${techPart}-${datePart}.pdf`);
+  closePDFModal();
+}
+
+document.getElementById('modal-bg').addEventListener('click',function(e){if(e.target===this)closeModal();});
+document.getElementById('completion-modal-bg').addEventListener('click',function(e){if(e.target===this)closeCompletionModal();});
+document.getElementById('log-modal-bg').addEventListener('click',function(e){if(e.target===this)closeLogModal();});
+document.getElementById('pdf-modal-bg').addEventListener('click',function(e){if(e.target===this)closePDFModal();});
+</script>
+</body>
+</html>
