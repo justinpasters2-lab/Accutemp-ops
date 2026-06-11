@@ -66,6 +66,7 @@ tr:hover td{background:#fafafa}
 .badge-callback{background:#fce8f0;color:#9c2c6b}
 .badge-open{background:#e6f4ea;color:#1e6e3b}
 .badge-parts{background:#fce8e6;color:#a33b2e}
+.badge-partsarrived{background:#fff3cd;color:#856404}
 .badge-approved{background:#e8f5e9;color:#2e7d32}
 .badge-scheduled{background:#e3f2fd;color:#1565c0}
 .badge-quoted{background:#f3e8fd;color:#6b21a8}
@@ -267,7 +268,7 @@ tr:hover td{background:#fafafa}
       <select id="wo-tech-filter" onchange="renderWO()"><option value="">All techs</option></select>
       <select id="wo-filter" onchange="renderWO()">
         <option value="">All statuses</option>
-        <option>In Progress</option><option>Waiting on Parts</option><option>Waiting on Customer</option><option>Needs Follow-up</option><option>Needs Quote</option>
+        <option>In Progress</option><option>Waiting on Parts</option><option>Parts Arrived - Schedule Now</option><option>Waiting on Customer</option><option>Needs Follow-up</option><option>Needs Quote</option>
       </select>
       <button class="btn-add" onclick="openModal('wo',null)">+ Add W/O</button>
     </div>
@@ -481,7 +482,7 @@ function autoPromoteScheduled(){
 }
 
 function badge(status){
-  const map={'In Progress':'badge-progress','Waiting on Parts':'badge-parts','Waiting on Customer':'badge-callback','Needs Follow-up':'badge-callback','Needs Quote':'badge-waiting','Approved - Awaiting Parts':'badge-approved','Scheduled':'badge-scheduled','On Hold':'badge-waiting','Open':'badge-open'};
+  const map={'In Progress':'badge-progress','Waiting on Parts':'badge-parts','Parts Arrived - Schedule Now':'badge-partsarrived','Waiting on Customer':'badge-callback','Needs Follow-up':'badge-callback','Needs Quote':'badge-waiting','Approved - Awaiting Parts':'badge-approved','Scheduled':'badge-scheduled','On Hold':'badge-waiting','Open':'badge-open'};
   return`<span class="badge ${map[status]||'badge-open'}">${status}</span>`;
 }
 function typeBadge(t){
@@ -1026,7 +1027,7 @@ function getModalHTML(type,item){
       <div class="form-row"><label>Tech Name</label><input id="f-tech" value="${v('tech')}" placeholder="e.g. Mike"></div>
       <div class="form-row"><label>Customer / Site</label><input id="f-customer" value="${v('customer')}" placeholder="e.g. Bedford HS"></div>
       <div class="form-row"><label>Job Type</label><select id="f-type" onchange="onTypeChange()">${sel('type',['Service','PM','Install','Quoted'])}</select></div>
-      <div class="form-row"><label>Status</label><select id="f-status">${sel('status',['In Progress','Waiting on Parts','Waiting on Customer','Needs Follow-up','Needs Quote'])}</select></div>
+      <div class="form-row"><label>Status</label><select id="f-status">${sel('status',['In Progress','Waiting on Parts','Parts Arrived - Schedule Now','Waiting on Customer','Needs Follow-up','Needs Quote'])}</select></div>
       <div class="form-row"><label>Expected Close</label><input type="date" id="f-due" value="${v('due')}"></div>
     </div>
     <div class="form-row pm-hrs-row${v('type')==='PM'?' show':''}" id="pm-hrs-row"><label>PM Hours</label><input id="f-pm_hrs" type="number" step="0.5" value="${v('pm_hrs')}" placeholder="e.g. 2.5"></div>
