@@ -177,6 +177,19 @@ tr:hover td{background:#fafafa}
 .customer-history{font-size:12px;color:#888;margin-top:4px}
 .customer-jobs{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
 .pdf-filter-modal{width:480px}
+.archive-detail-row td{padding:0!important;background:#fafafa;border-bottom:2px solid #e8e8e8}
+.archive-detail-panel{padding:14px 16px}
+.archive-detail-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-bottom:8px}
+.archive-field-label{font-size:10px;color:#888;text-transform:uppercase;letter-spacing:0.04em;font-weight:600;margin-bottom:2px}
+.archive-field-value{font-size:13px;color:#1a1a1a}
+.archive-notes-block{background:white;border:1px solid #e8e8e8;border-radius:6px;padding:8px 10px;font-size:12px;color:#444;white-space:pre-wrap;margin-top:6px}
+.archive-section-divider{font-size:10px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:0.05em;border-top:1px solid #e8e8e8;padding-top:8px;margin-top:8px;margin-bottom:6px}
+.archive-log-entry{display:flex;gap:10px;padding:5px 0;border-bottom:1px solid #f0f0f0;font-size:11px}
+.archive-log-entry:last-child{border-bottom:none}
+.archive-log-time{color:#bbb;white-space:nowrap;min-width:110px}
+.archive-log-msg{color:#555}
+.archive-expand-btn{font-size:11px;padding:3px 10px;border-radius:20px;cursor:pointer;background:none;border:1px solid #ddd;color:#666;margin-right:4px}
+.archive-expand-btn:hover{background:#e8f0fe;color:#1557b0;border-color:#aac4f5}
 .pdf-filter-section{background:#f8f8f8;border-radius:8px;padding:14px;margin-bottom:12px;border:1px solid #e8e8e8}
 .pdf-filter-section h4{font-size:12px;font-weight:600;color:#666;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:10px}
 .pdf-filter-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
@@ -893,13 +906,99 @@ function renderCustomers(){
   }).join('');
 }
 
+function getArchiveDetailHTML(r){
+  const it=r.item||{};
+  const f=(label,val)=>val||val===0?`<div><div class="archive-field-label">${label}</div><div class="archive-field-value">${val}</div></div>`:'';
+  let html='<div class="archive-detail-panel">';
+  // ── W/O type ──
+  if(r.type==='wo'){
+    html+=`<div class="archive-detail-grid">
+      ${f('W/O #',it.wo_num)}${f('Tech',it.tech)}${f('Customer',it.customer)}
+      ${f('Job Type',it.type)}${f('Status',it.status)}${f('Due Date',fmtDate(it.due))}
+      ${it.pm_hrs?f('PM Hours',it.pm_hrs+'h'):''}${f('Created',fmtDate(it.created))}
+    </div>`;
+    if(it.notes){html+=`<div class="archive-field-label">Notes</div><div class="archive-notes-block">${it.notes}</div>`;}
+    if(it.log&&it.log.length){
+      html+=`<div class="archive-section-divider">Activity Log (${it.log.length})</div>`;
+      html+=it.log.map(e=>`<div class="archive-log-entry"><span class="archive-log-time">${e.ts}</span><span class="archive-log-msg">${e.msg}</span></div>`).join('');
+    }
+  }
+  // ── Quoted type ──
+  else if(r.type==='quoted'){
+    const techStr=(it.techs||[]).filter(Boolean).join(', ')||it.tech||'\u2014';
+    html+=`<div class="archive-detail-grid">
+      ${f('W/O #',it.wo_num)}${f('Customer',it.customer)}${f('Tech(s)',techStr)}
+      ${f('Job Type',it.type)}${f('Hrs Quoted',it.hrs_quoted)}${f('Cost Quoted',it.cost_quoted?'$'+parseFloat(it.cost_quoted).toLocaleString('en-US',{maximumFractionDigits:0}):null)}
+      ${f('Hrs Actual',it.hrs_actual)}${f('Cost Actual',it.cost_actual?'$'+parseFloat(it.cost_actual).toLocaleString('en-US',{maximumFractionDigits:0}):null)}
+      ${it.variance?f('Variance',it.variance.toUpperCase()):''}${it.over_reason?f('Over Reason',it.over_reason):''}
+    </div>`;
+    if(it.notes){html+=`<div class="archive-field-label">Original Notes</div><div class="archive-notes-block">${it.notes}</div>`;}
+    if(it.completion_notes){html+=`<div class="archive-field-label" style="margin-top:6px">Completion Notes</div><div class="archive-notes-block">${it.completion_notes}</div>`;}
+  }
+  // ── Scheduled type ──
+  else if(r.type==='scheduled'){
+    html+=`<div class="archive-detail-grid">
+      ${f('W/O #',it.wo_num)}${f('Tech',it.tech)}${f('Customer',it.customer)}
+      ${f('Job Type',it.type)}${f('Status',it.status)}${f('Sched. Date',fmtDate(it.date))}
+    </div>`;
+    if(it.notes){html+=`<div class="archive-field-label">Notes</div><div class="archive-notes-block">${it.notes}</div>`;}
+  }
+  // ── Parts type ──
+  else if(r.type==='parts'){
+    html+=`<div class="archive-detail-grid">
+      ${f('W/O #',it.wo_num)}${f('Tech',it.tech)}${f('Part',it.part)}
+      ${f('Supplier',it.supplier)}${f('Ordered',fmtDate(it.ordered))}${f('ETA',fmtDate(it.eta))}
+    </div>`;
+  }
+  // ── Callback type ──
+  else if(r.type==='callbacks'){
+    html+=`<div class="archive-detail-grid">
+      ${f('Customer',it.customer)}${f('Tech',it.tech)}
+      ${f('Date Flagged',fmtDate(it.flagged))}${f('Deadline',fmtDate(it.deadline))}
+    </div>`;
+    if(it.reason){html+=`<div class="archive-field-label">Reason</div><div class="archive-notes-block">${it.reason}</div>`;}
+  }
+  // ── Task type ──
+  else if(r.type==='tasks'){
+    html+=`<div class="archive-detail-grid">
+      ${f('Task',it.task)}${f('Category',it.category)}${f('Due',fmtDate(it.due))}
+    </div>`;
+    if(it.notes){html+=`<div class="archive-field-label">Notes</div><div class="archive-notes-block">${it.notes}</div>`;}
+  }
+  // ── Fallback: show all non-empty keys ──
+  else{
+    const pairs=Object.entries(it).filter(([k,v])=>v&&k!=='log');
+    html+=`<div class="archive-detail-grid">${pairs.map(([k,v])=>f(k,v)).join('')}</div>`;
+  }
+  html+='</div>';
+  return html;
+}
+
+function toggleArchiveDetail(i){
+  const row=document.getElementById('archive-detail-'+i);
+  const btn=document.getElementById('archive-expand-btn-'+i);
+  if(!row)return;
+  const open=row.style.display==='table-row';
+  row.style.display=open?'none':'table-row';
+  if(btn)btn.textContent=open?'Details':'Hide';
+}
+
 function renderArchive(){
   const tbody=document.getElementById('archive-body');
   if(!data.archive.length){renderEmpty('archive-body',4);return;}
-  tbody.innerHTML=data.archive.map((r,i)=>`<tr>
-    <td><span class="badge badge-open">${r.type}</span></td><td>${r.label}</td>
-    <td>${fmtDate(r.date)}</td><td><button class="btn-del" onclick="delArchive(${i})">\u2715</button></td>
-  </tr>`).join('');
+  tbody.innerHTML=data.archive.map((r,i)=>`
+    <tr>
+      <td><span class="badge badge-open">${r.type}</span></td>
+      <td>${r.label}</td>
+      <td>${fmtDate(r.date)}</td>
+      <td><div class="action-btns">
+        <button class="archive-expand-btn" id="archive-expand-btn-${i}" onclick="toggleArchiveDetail(${i})">Details</button>
+        <button class="btn-del" onclick="delArchive(${i})">\u2715</button>
+      </div></td>
+    </tr>
+    <tr id="archive-detail-${i}" class="archive-detail-row" style="display:none">
+      <td colspan="4">${getArchiveDetailHTML(r)}</td>
+    </tr>`).join('');
 }
 
 function openLog(idx){
