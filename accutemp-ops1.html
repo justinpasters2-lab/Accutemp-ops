@@ -367,7 +367,7 @@ tr:hover td{background:#fafafa}
   <div id="tab-archive" class="section">
     <p style="font-size:13px;color:#888;margin-bottom:12px">Completed items cleared from main board.</p>
     <table><thead><tr>
-      <th style="width:110px">Type</th><th>Item</th><th style="width:100px">Completed</th><th style="width:90px">Cost</th><th style="width:120px"></th>
+      <th style="width:110px">Type</th><th>Item</th><th style="width:100px">Completed</th><th style="width:90px">Billed</th><th style="width:90px">Our Cost</th><th style="width:120px"></th>
     </tr></thead><tbody id="archive-body"></tbody></table>
   </div>
 </div>
@@ -913,11 +913,15 @@ function getArchiveDetailHTML(r){
   let html='<div class="archive-detail-panel">';
   // ── W/O type ──
   if(r.type==='wo'){
+    const{cust,our}=getArchiveDisplayCosts(r);
+    const margin=cust!=null&&our!=null?cust-our:null;
     html+=`<div class="archive-detail-grid">
       ${f('W/O #',it.wo_num)}${f('Tech',it.tech)}${f('Customer',it.customer)}
       ${f('Job Type',it.type)}${f('Status',it.status)}${f('Due Date',fmtDate(it.due))}
       ${it.pm_hrs?f('PM Hours',it.pm_hrs+'h'):''}${f('Created',fmtDate(it.created))}
-      ${it.cost_actual!=null?f('Final Cost','$'+parseFloat(it.cost_actual).toLocaleString('en-US',{maximumFractionDigits:0})):it.cost_quoted!=null?f('Cost','$'+parseFloat(it.cost_quoted).toLocaleString('en-US',{maximumFractionDigits:0})):''}
+      ${cust!=null?f('Billed to Customer',fmtCost(cust)):''}
+      ${our!=null?f('Our Cost',fmtCost(our)):''}
+      ${margin!=null?f('Margin',`${margin>=0?'+':'-'}$${Math.abs(margin).toLocaleString('en-US',{maximumFractionDigits:0})}`):''}
     </div>`;
     if(it.notes){html+=`<div class="archive-field-label">Notes</div><div class="archive-notes-block">${it.notes}</div>`;}
     if(it.log&&it.log.length){
@@ -928,10 +932,15 @@ function getArchiveDetailHTML(r){
   // ── Quoted type ──
   else if(r.type==='quoted'){
     const techStr=(it.techs||[]).filter(Boolean).join(', ')||it.tech||'\u2014';
+    const{cust,our}=getArchiveDisplayCosts(r);
+    const margin=cust!=null&&our!=null?cust-our:null;
     html+=`<div class="archive-detail-grid">
       ${f('W/O #',it.wo_num)}${f('Customer',it.customer)}${f('Tech(s)',techStr)}
-      ${f('Job Type',it.type)}${f('Hrs Quoted',it.hrs_quoted)}${f('Cost Quoted',it.cost_quoted?'$'+parseFloat(it.cost_quoted).toLocaleString('en-US',{maximumFractionDigits:0}):null)}
-      ${f('Hrs Actual',it.hrs_actual)}${f('Cost Actual',it.cost_actual?'$'+parseFloat(it.cost_actual).toLocaleString('en-US',{maximumFractionDigits:0}):null)}
+      ${f('Job Type',it.type)}${f('Hrs Quoted',it.hrs_quoted)}${f('Cost Quoted',fmtCost(it.cost_quoted))}
+      ${f('Hrs Actual',it.hrs_actual)}
+      ${cust!=null?f('Billed to Customer',fmtCost(cust)):''}
+      ${our!=null?f('Our Cost',fmtCost(our)):''}
+      ${margin!=null?f('Margin',`${margin>=0?'+':'-'}$${Math.abs(margin).toLocaleString('en-US',{maximumFractionDigits:0})}`):''}
       ${it.variance?f('Variance',it.variance.toUpperCase()):''}${it.over_reason?f('Over Reason',it.over_reason):''}
     </div>`;
     if(it.notes){html+=`<div class="archive-field-label">Original Notes</div><div class="archive-notes-block">${it.notes}</div>`;}
@@ -939,10 +948,14 @@ function getArchiveDetailHTML(r){
   }
   // ── Scheduled type ──
   else if(r.type==='scheduled'){
+    const{cust,our}=getArchiveDisplayCosts(r);
+    const margin=cust!=null&&our!=null?cust-our:null;
     html+=`<div class="archive-detail-grid">
       ${f('W/O #',it.wo_num)}${f('Tech',it.tech)}${f('Customer',it.customer)}
       ${f('Job Type',it.type)}${f('Status',it.status)}${f('Sched. Date',fmtDate(it.date))}
-      ${it.cost_actual!=null?f('Final Cost','$'+parseFloat(it.cost_actual).toLocaleString('en-US',{maximumFractionDigits:0})):it.cost_quoted!=null?f('Cost','$'+parseFloat(it.cost_quoted).toLocaleString('en-US',{maximumFractionDigits:0})):''}
+      ${cust!=null?f('Billed to Customer',fmtCost(cust)):''}
+      ${our!=null?f('Our Cost',fmtCost(our)):''}
+      ${margin!=null?f('Margin',`${margin>=0?'+':'-'}$${Math.abs(margin).toLocaleString('en-US',{maximumFractionDigits:0})}`):''}
     </div>`;
     if(it.notes){html+=`<div class="archive-field-label">Notes</div><div class="archive-notes-block">${it.notes}</div>`;}
   }
@@ -980,36 +993,64 @@ function getArchiveDetailHTML(r){
 function openArchiveEdit(i){
   const r=data.archive[i];
   const it=r.item||{};
-  const cost=it.cost_actual!=null?it.cost_actual:it.cost_quoted!=null?it.cost_quoted:'';
+  // Seed customer_cost: prefer explicit field, fall back to cost_quoted for quoted jobs
+  const custCost=it.customer_cost!=null?it.customer_cost:r.type==='quoted'&&it.cost_quoted!=null?it.cost_quoted:'';
+  // Seed our_cost: prefer explicit field, fall back to cost_actual for quoted jobs
+  const ourCost=it.our_cost!=null?it.our_cost:it.cost_actual!=null?it.cost_actual:'';
   const notes=it.completion_notes||it.notes||'';
   document.getElementById('modal-content').innerHTML=`
     <h3>Edit Archive Entry</h3>
     <div style="font-size:12px;color:#888;margin-bottom:14px;padding:8px 10px;background:#f5f5f3;border-radius:6px">${r.label}</div>
-    <div class="form-row"><label>Final / Actual Cost ($)</label><input id="ae-cost" type="number" step="0.01" value="${cost}" placeholder="e.g. 1850"></div>
+    <div class="form-grid">
+      <div class="form-row"><label>Customer Billed ($)</label><input id="ae-cust" type="number" step="0.01" value="${custCost}" placeholder="What customer pays"></div>
+      <div class="form-row"><label>Our Cost ($)</label><input id="ae-our" type="number" step="0.01" value="${ourCost}" placeholder="What it cost us"></div>
+    </div>
+    <div id="ae-margin-display" style="margin-bottom:12px"></div>
     <div class="form-row"><label>Notes</label><textarea id="ae-notes">${notes}</textarea></div>
     <div class="modal-btns">
       <button class="btn-cancel" onclick="closeModal()">Cancel</button>
       <button class="btn-save" onclick="saveArchiveEdit(${i})">Save</button>
     </div>`;
-  document.getElementById('modal-bg').classList.add('open');
+  // Wire up live margin calc
+  ['ae-cust','ae-our'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el)el.addEventListener('input',calcArchiveMargin);
+  });
+  calcArchiveMargin();
+}
+
+function calcArchiveMargin(){
+  const cust=parseFloat(document.getElementById('ae-cust')?.value)||0;
+  const our=parseFloat(document.getElementById('ae-our')?.value)||0;
+  const el=document.getElementById('ae-margin-display');
+  if(!el)return;
+  if(!cust&&!our){el.innerHTML='';return;}
+  const margin=cust-our;
+  const pct=cust>0?((margin/cust)*100).toFixed(1):null;
+  const cls=margin>=0?'variance-under':'variance-over';
+  const sign=margin>=0?'+':'-';
+  el.innerHTML=`<div class="variance-display ${cls}">Margin: ${sign}$${Math.abs(margin).toLocaleString('en-US',{maximumFractionDigits:0})}${pct?` (${pct}%)`:''}</div>`;
 }
 
 function saveArchiveEdit(i){
   if(!data.archive[i].item)data.archive[i].item={};
-  const costVal=document.getElementById('ae-cost').value.trim();
+  const custVal=document.getElementById('ae-cust').value.trim();
+  const ourVal=document.getElementById('ae-our').value.trim();
   const notes=document.getElementById('ae-notes').value.trim();
-  data.archive[i].item.cost_actual=costVal!==''?parseFloat(costVal):null;
-  // Store notes in the right field based on type
+  data.archive[i].item.customer_cost=custVal!==''?parseFloat(custVal):null;
+  data.archive[i].item.our_cost=ourVal!==''?parseFloat(ourVal):null;
   if(data.archive[i].type==='quoted'){data.archive[i].item.completion_notes=notes;}
   else{data.archive[i].item.notes=notes;}
   closeModal();scheduleSave();renderArchive();
 }
 
-function getArchiveCost(r){
+function fmtCost(v){if(v===null||v===undefined||v==='')return'\u2014';return'$'+parseFloat(v).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0});}
+
+function getArchiveDisplayCosts(r){
   const it=r.item||{};
-  const v=it.cost_actual!=null?it.cost_actual:it.cost_quoted!=null?it.cost_quoted:null;
-  if(v===null||v===undefined||v==='')return'\u2014';
-  return'$'+parseFloat(v).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0});
+  const cust=it.customer_cost!=null?it.customer_cost:r.type==='quoted'&&it.cost_quoted!=null?it.cost_quoted:null;
+  const our=it.our_cost!=null?it.our_cost:it.cost_actual!=null?it.cost_actual:null;
+  return{cust,our};
 }
 
 function toggleArchiveDetail(i){
@@ -1023,13 +1064,15 @@ function toggleArchiveDetail(i){
 
 function renderArchive(){
   const tbody=document.getElementById('archive-body');
-  if(!data.archive.length){renderEmpty('archive-body',5);return;}
-  tbody.innerHTML=data.archive.map((r,i)=>`
-    <tr>
+  if(!data.archive.length){renderEmpty('archive-body',6);return;}
+  tbody.innerHTML=data.archive.map((r,i)=>{
+    const {cust,our}=getArchiveDisplayCosts(r);
+    return`<tr>
       <td><span class="badge badge-open">${r.type}</span></td>
       <td>${r.label}</td>
       <td>${fmtDate(r.date)}</td>
-      <td style="font-weight:500;color:#1e6e3b">${getArchiveCost(r)}</td>
+      <td style="font-weight:500;color:#1e6e3b">${fmtCost(cust)}</td>
+      <td style="font-weight:500;color:#555">${fmtCost(our)}</td>
       <td><div class="action-btns">
         <button class="archive-expand-btn" id="archive-expand-btn-${i}" onclick="toggleArchiveDetail(${i})">Details</button>
         <button class="btn-edit" onclick="openArchiveEdit(${i})">Edit</button>
@@ -1037,8 +1080,9 @@ function renderArchive(){
       </div></td>
     </tr>
     <tr id="archive-detail-${i}" class="archive-detail-row" style="display:none">
-      <td colspan="5">${getArchiveDetailHTML(r)}</td>
-    </tr>`).join('');
+      <td colspan="6">${getArchiveDetailHTML(r)}</td>
+    </tr>`;
+  }).join('');
 }
 
 function openLog(idx){
