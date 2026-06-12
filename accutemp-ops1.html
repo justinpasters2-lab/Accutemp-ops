@@ -1319,6 +1319,14 @@ function openPDFModal(){
         <label class="pdf-checkbox-item"><input type="checkbox" id="pf-tasks" checked> My Tasks</label>
       </div>
     </div>
+    <div class="pdf-filter-section" style="border-color:#a8d5b5;background:#f0faf3">
+      <h4 style="color:#1e6e3b">Completed Jobs Filter</h4>
+      <p style="font-size:12px;color:#555;margin-bottom:10px">Use this to exclude jobs already sent in a previous report. Only jobs completed within this range will appear.</p>
+      <div class="pdf-filter-grid">
+        <div class="form-row"><label>Completed From</label><input type="date" id="pf-comp-from"></div>
+        <div class="form-row"><label>Completed To</label><input type="date" id="pf-comp-to"></div>
+      </div>
+    </div>
     <div class="pdf-filter-section">
       <h4>Filters (applies to all sections)</h4>
       <div class="pdf-filter-grid">
@@ -1352,8 +1360,11 @@ function exportPDF(){
   const fType=document.getElementById('pf-type')?.value||'';
   const fDateFrom=document.getElementById('pf-date-from')?.value||'';
   const fDateTo=document.getElementById('pf-date-to')?.value||'';
+  const fCompFrom=document.getElementById('pf-comp-from')?.value||'';
+  const fCompTo=document.getElementById('pf-comp-to')?.value||'';
 
   const inDateRange=(d)=>{if(!d)return true;if(fDateFrom&&d<fDateFrom)return false;if(fDateTo&&d>fDateTo)return false;return true;};
+  const inCompRange=(d)=>{if(!d)return true;if(fCompFrom&&d<fCompFrom)return false;if(fCompTo&&d>fCompTo)return false;return true;};
   const techMatch=(tech)=>!fTech||(tech||'')===fTech||(tech||'').includes(fTech);
   const typeMatch=(type)=>!fType||type===fType;
 
@@ -1367,6 +1378,7 @@ function exportPDF(){
   if(fTech)subtitle+=` \u2014 Tech: ${fTech}`;
   if(fType)subtitle+=` \u2014 Type: ${fType}`;
   if(fDateFrom||fDateTo)subtitle+=` \u2014 ${fDateFrom?fmtDate(fDateFrom):'start'} to ${fDateTo?fmtDate(fDateTo):'today'}`;
+  if(fCompFrom||fCompTo)subtitle+=` \u2014 Completed: ${fCompFrom?fmtDate(fCompFrom):'start'} to ${fCompTo?fmtDate(fCompTo):'today'}`;
   doc.text(subtitle,margin,y);y+=10;doc.setTextColor(0);
 
   function sH(title,color){
@@ -1382,36 +1394,31 @@ function exportPDF(){
       if(!r.item)return false;
       const item=r.item;
       const tech=item.tech||(item.techs||[]).join(', ')||'';
-      const tMatch=techMatch(tech);
-      const tyMatch=typeMatch(item.type);
-      const dMatch=inDateRange(r.date);
-      return tMatch&&tyMatch&&dMatch;
+      return techMatch(tech)&&typeMatch(item.type)&&inCompRange(r.date);
     });
-    sH(`Completed / Billable Jobs (${billable.length})`,[230,245,235]);
+    const rangeLabel=(fCompFrom||fCompTo)?` — ${fCompFrom?fmtDate(fCompFrom):'start'} to ${fCompTo?fmtDate(fCompTo):'today'}`:'';
+    sH(`Completed / Billable Jobs (${billable.length})${rangeLabel}`,[230,245,235]);
     if(billable.length){
-      tH(['W/O #','Customer','Tech','Type','Completed','Cost Q','Cost Actual'],[22,35,22,16,22,22,colW-139]);
-      let totalCostQ=0,totalCostA=0;
+      tH(['W/O #','Customer','Tech','Type','Completed','Billed','Our Cost'],[22,35,22,16,22,22,colW-139]);
+      let totalBilled=0,totalOur=0;
       billable.forEach(r=>{
         const it=r.item;
         const tech=it.tech||(it.techs||[]).filter(Boolean).join(', ')||'\u2014';
-        const cq=parseFloat(it.cost_quoted)||0;
-        const ca=parseFloat(it.cost_actual)||0;
-        if(cq)totalCostQ+=cq;
-        if(ca)totalCostA+=ca;
-        const cqStr=cq?'$'+cq.toLocaleString('en-US',{maximumFractionDigits:0}):'\u2014';
-        const caStr=ca?'$'+ca.toLocaleString('en-US',{maximumFractionDigits:0}):'\u2014';
-        rowW([it.wo_num,it.customer||'\u2014',tech,it.type||r.type,fmtDate(r.date),cqStr,caStr],[22,35,22,16,22,22,colW-139]);
+        const billed=it.customer_cost!=null?parseFloat(it.customer_cost):r.type==='quoted'&&it.cost_quoted?parseFloat(it.cost_quoted):0;
+        const our=it.our_cost!=null?parseFloat(it.our_cost):it.cost_actual?parseFloat(it.cost_actual):0;
+        if(billed)totalBilled+=billed;
+        if(our)totalOur+=our;
+        const billedStr=billed?'$'+billed.toLocaleString('en-US',{maximumFractionDigits:0}):'\u2014';
+        const ourStr=our?'$'+our.toLocaleString('en-US',{maximumFractionDigits:0}):'\u2014';
+        rowW([it.wo_num,it.customer||'\u2014',tech,it.type||r.type,fmtDate(r.date),billedStr,ourStr],[22,35,22,16,22,22,colW-139]);
       });
-      // Totals line
       doc.setFont(undefined,'bold');doc.setFontSize(9);
-      const totalQStr=totalCostQ?'$'+totalCostQ.toLocaleString('en-US',{maximumFractionDigits:0}):'';
-      const totalAStr=totalCostA?'$'+totalCostA.toLocaleString('en-US',{maximumFractionDigits:0}):'';
       doc.text(`TOTAL: ${billable.length} jobs`,margin,y);
-      if(totalQStr)doc.text(`Quoted: ${totalQStr}`,margin+110,y);
-      if(totalAStr)doc.text(`Actual: ${totalAStr}`,margin+140,y);
+      if(totalBilled)doc.text(`Billed: $${totalBilled.toLocaleString('en-US',{maximumFractionDigits:0})}`,margin+100,y);
+      if(totalOur)doc.text(`Our Cost: $${totalOur.toLocaleString('en-US',{maximumFractionDigits:0})}`,margin+140,y);
       doc.setFont(undefined,'normal');
       y+=7;
-    }else{doc.setTextColor(150);doc.text('No completed jobs in this date range',margin,y);doc.setTextColor(0);y+=6;}
+    }else{doc.setTextColor(150);doc.text('No completed jobs in this range',margin,y);doc.setTextColor(0);y+=6;}
     y+=4;
   }
 
