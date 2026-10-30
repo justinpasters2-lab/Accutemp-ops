@@ -177,7 +177,11 @@ tr:hover td{background:#fafafa}
 .customer-card-name{font-size:14px;font-weight:500}
 .customer-history{font-size:12px;color:#888;margin-top:4px}
 .customer-jobs{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
-.pdf-filter-modal{width:480px}
+.pdf-filter-modal{width:560px}
+.pdf-sec-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 12px}
+.pdf-wo-list{max-height:140px;overflow-y:auto;border:1px solid #e3e3e3;border-radius:6px;background:white;padding:6px 8px;display:flex;flex-direction:column;gap:4px}
+.pdf-wo-list .pdf-checkbox-item{font-size:12px}
+.pdf-filter-section h4 a{color:#555;font-size:11px}
 .archive-detail-row td{padding:0!important;background:#fafafa;border-bottom:2px solid #e8e8e8}
 .archive-detail-panel{padding:14px 16px}
 .archive-detail-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-bottom:8px}
@@ -1587,42 +1591,90 @@ function delItem(type,idx){
 function delArchive(idx){data.archive.splice(idx,1);scheduleSave();renderArchive();}
 
 // ── PDF Export with Filters ───────────────────────────────
+// Sections, filters, and specific W/O #s. Reads data.* only; never writes.
+const PDF_SECTIONS=[
+  ['aq','Action Queue'],['wo','Open Work Orders'],['quoted','Quoted Jobs'],['parts','Parts Pipeline'],
+  ['scheduled','Scheduled Jobs'],['callbacks','Callbacks'],['tasks','My Tasks'],['completed','Completed / Billable (archive)'],
+  ['pm','PM Tracker'],['score','Scoreboard (per tech)']
+];
+const PDF_DEFAULT_ON=['wo','quoted','parts','scheduled','callbacks','tasks','completed'];
+function pdfParseWOs(s){return[...new Set(String(s||'').split(/[\s,;]+/).map(x=>x.trim().replace(/^#/,'')).filter(Boolean))];}
+function pdfOpenWOs(){
+  const m={};
+  data.wo.filter(r=>!r.completed).forEach(r=>{if(r.wo_num&&!m[r.wo_num])m[r.wo_num]=r.customer||'';});
+  data.quoted.forEach(r=>{if(r.wo_num&&!m[r.wo_num])m[r.wo_num]=r.customer||'';});
+  data.scheduled.forEach(r=>{if(r.wo_num&&!m[r.wo_num])m[r.wo_num]=r.customer||'';});
+  return Object.entries(m).sort((a,b)=>String(a[0]).localeCompare(String(b[0]),undefined,{numeric:true}));
+}
+function pdfJobCustomer(wo){const j=data.jobs&&data.jobs[(wo||'').trim()];return j?j.customer||'':'';}
+function pdfAllCustomers(){
+  const s=new Map();const add=c=>{c=String(c||'').trim();if(c&&c!=='\u2014'&&!s.has(c.toLowerCase()))s.set(c.toLowerCase(),c);};
+  ['wo','quoted','scheduled','callbacks'].forEach(t=>(data[t]||[]).forEach(r=>add(r.customer)));
+  (data.archive||[]).forEach(a=>a.item&&add(a.item.customer));
+  (data.parts||[]).forEach(p=>add(p.customer||pdfJobCustomer(p.wo_num)));
+  return[...s.values()].sort((a,b)=>a.localeCompare(b));
+}
+function pdfAllStatuses(){
+  const s=new Set();
+  data.wo.filter(r=>!r.completed).forEach(r=>r.status&&s.add(r.status));
+  data.quoted.forEach(r=>r.status&&s.add(r.status));
+  data.scheduled.forEach(r=>r.status&&s.add(r.status));
+  return[...s].sort();
+}
+function pdfSetAllSections(on){PDF_SECTIONS.forEach(([k])=>{const el=document.getElementById('pf-'+k);if(el)el.checked=on;});}
+function pdfWOPick(){
+  const field=document.getElementById('pf-wos');const cur=pdfParseWOs(field.value);
+  const boxes=[...document.querySelectorAll('.pf-wo-pick')];
+  const listed=new Set(boxes.map(b=>b.value));
+  const keep=cur.filter(w=>!listed.has(w));
+  field.value=keep.concat(boxes.filter(b=>b.checked).map(b=>b.value)).join(', ');
+}
+function pdfWOSync(){const cur=new Set(pdfParseWOs(document.getElementById('pf-wos').value));document.querySelectorAll('.pf-wo-pick').forEach(b=>{b.checked=cur.has(b.value);});}
+function pdfWOListFilter(){
+  const q=(document.getElementById('pf-wo-find').value||'').toLowerCase();
+  document.querySelectorAll('.pf-wo-row').forEach(el=>{el.style.display=!q||el.getAttribute('data-txt').includes(q)?'':'none';});
+}
 function openPDFModal(){
-  const techs=getAllTechs();
-  const techOpts=techs.map(t=>`<option value="${t}">${t}</option>`).join('');
+  ensureV2Index();
+  const opt=v=>`<option value="${escH(v)}">${escH(v)}</option>`;
+  const techOpts=getAllTechs().map(opt).join('');
+  const custOpts=pdfAllCustomers().map(opt).join('');
+  const statusOpts=pdfAllStatuses().map(opt).join('');
+  const secs=PDF_SECTIONS.map(([k,l])=>`<label class="pdf-checkbox-item"><input type="checkbox" id="pf-${k}"${PDF_DEFAULT_ON.includes(k)?' checked':''}> ${l}</label>`).join('');
+  const woList=pdfOpenWOs().map(([w,c])=>`<label class="pdf-checkbox-item pf-wo-row" data-txt="${escH((w+' '+c).toLowerCase())}"><input type="checkbox" class="pf-wo-pick" value="${escH(w)}" onchange="pdfWOPick()"> <b>${escH(w)}</b> <span style="color:#888">${escH(c)}</span></label>`).join('')||'<div style="font-size:12px;color:#888">No open W/Os</div>';
   document.getElementById('pdf-modal-content').innerHTML=`
     <h3>Export PDF Report</h3>
     <div class="pdf-filter-section">
-      <h4>Sections to Include</h4>
-      <div class="pdf-checkbox-group">
-        <label class="pdf-checkbox-item"><input type="checkbox" id="pf-completed" checked> Completed / Billable Jobs</label>
-        <label class="pdf-checkbox-item"><input type="checkbox" id="pf-wo" checked> Open Work Orders</label>
-        <label class="pdf-checkbox-item"><input type="checkbox" id="pf-quoted" checked> Quoted Jobs</label>
-        <label class="pdf-checkbox-item"><input type="checkbox" id="pf-parts" checked> Parts Pipeline</label>
-        <label class="pdf-checkbox-item"><input type="checkbox" id="pf-scheduled" checked> Scheduled Jobs</label>
-        <label class="pdf-checkbox-item"><input type="checkbox" id="pf-callbacks" checked> Callbacks</label>
-        <label class="pdf-checkbox-item"><input type="checkbox" id="pf-tasks" checked> My Tasks</label>
+      <h4 style="display:flex;justify-content:space-between;align-items:center">Sections to Include
+        <span style="text-transform:none;letter-spacing:0;font-weight:400"><a href="#" onclick="pdfSetAllSections(true);return false">Select all</a> \u00b7 <a href="#" onclick="pdfSetAllSections(false);return false">Clear all</a></span></h4>
+      <div class="pdf-checkbox-group pdf-sec-grid">${secs}</div>
+    </div>
+    <div class="pdf-filter-section">
+      <h4>Specific Jobs</h4>
+      <div class="form-row"><label>Specific W/O #s (comma, space, or new line). Only these jobs will print; one W/O adds a full job detail page.</label>
+        <textarea id="pf-wos" style="min-height:44px" placeholder="e.g. 10432, 10518" oninput="pdfWOSync()"></textarea></div>
+      <div class="form-row" style="margin-bottom:6px"><input id="pf-wo-find" placeholder="Find an open W/O to add..." oninput="pdfWOListFilter()"></div>
+      <div class="pdf-wo-list">${woList}</div>
+    </div>
+    <div class="pdf-filter-section">
+      <h4>Filters (apply to every section that has the field)</h4>
+      <div class="pdf-filter-grid">
+        <div class="form-row"><label>Tech</label><select id="pf-tech"><option value="">All Techs</option>${techOpts}</select></div>
+        <div class="form-row"><label>Customer / Site</label><select id="pf-customer"><option value="">All Customers</option>${custOpts}</select></div>
+        <div class="form-row"><label>Status</label><select id="pf-status"><option value="">All Statuses</option>${statusOpts}</select></div>
+        <div class="form-row"><label>Job Type</label><select id="pf-type"><option value="">All Types</option><option>Service</option><option>PM</option><option>Install</option><option>Quoted</option></select></div>
+        <div class="form-row"><label>Date From (due / date / ETA / deadline)</label><input type="date" id="pf-date-from"></div>
+        <div class="form-row"><label>Date To</label><input type="date" id="pf-date-to"></div>
       </div>
+      <div class="form-row" style="margin-bottom:0"><label>Search text (W/O #, customer, notes, part, tech)</label><input id="pf-text" placeholder="e.g. compressor, Bedford, 10432"></div>
+      <p style="font-size:11px;color:#888;margin-top:8px">Rows missing a filtered field drop out (e.g. a Status filter drops Callbacks and Tasks). Rows with no date are kept by the date range.</p>
     </div>
     <div class="pdf-filter-section" style="border-color:#a8d5b5;background:#f0faf3">
-      <h4 style="color:#1e6e3b">Completed Jobs Filter</h4>
+      <h4 style="color:#1e6e3b">Completed Jobs Filter (archive only)</h4>
       <p style="font-size:12px;color:#555;margin-bottom:10px">Use this to exclude jobs already sent in a previous report. Only jobs completed within this range will appear.</p>
       <div class="pdf-filter-grid">
         <div class="form-row"><label>Completed From</label><input type="date" id="pf-comp-from"></div>
         <div class="form-row"><label>Completed To</label><input type="date" id="pf-comp-to"></div>
-      </div>
-    </div>
-    <div class="pdf-filter-section">
-      <h4>Filters (applies to all sections)</h4>
-      <div class="pdf-filter-grid">
-        <div class="form-row"><label>Tech</label>
-          <select id="pf-tech"><option value="">All Techs</option>${techOpts}</select>
-        </div>
-        <div class="form-row"><label>Job Type</label>
-          <select id="pf-type"><option value="">All Types</option><option>Service</option><option>PM</option><option>Install</option><option>Quoted</option></select>
-        </div>
-        <div class="form-row"><label>Date From</label><input type="date" id="pf-date-from"></div>
-        <div class="form-row"><label>Date To</label><input type="date" id="pf-date-to"></div>
       </div>
     </div>
     <div class="modal-btns">
@@ -1634,124 +1686,240 @@ function openPDFModal(){
 function closePDFModal(){document.getElementById('pdf-modal-bg').classList.remove('open');}
 
 function exportPDF(){
-  const inclCompleted=document.getElementById('pf-completed')?.checked!==false;
-  const inclWO=document.getElementById('pf-wo')?.checked!==false;
-  const inclQuoted=document.getElementById('pf-quoted')?.checked!==false;
-  const inclParts=document.getElementById('pf-parts')?.checked!==false;
-  const inclScheduled=document.getElementById('pf-scheduled')?.checked!==false;
-  const inclCallbacks=document.getElementById('pf-callbacks')?.checked!==false;
-  const inclTasks=document.getElementById('pf-tasks')?.checked!==false;
-  const fTech=document.getElementById('pf-tech')?.value||'';
-  const fType=document.getElementById('pf-type')?.value||'';
-  const fDateFrom=document.getElementById('pf-date-from')?.value||'';
-  const fDateTo=document.getElementById('pf-date-to')?.value||'';
-  const fCompFrom=document.getElementById('pf-comp-from')?.value||'';
-  const fCompTo=document.getElementById('pf-comp-to')?.value||'';
-
-  const inDateRange=(d)=>{if(!d)return true;if(fDateFrom&&d<fDateFrom)return false;if(fDateTo&&d>fDateTo)return false;return true;};
-  const inCompRange=(d)=>{if(!d)return true;if(fCompFrom&&d<fCompFrom)return false;if(fCompTo&&d>fCompTo)return false;return true;};
-  const techMatch=(tech)=>!fTech||(tech||'')===fTech||(tech||'').includes(fTech);
-  const typeMatch=(type)=>!fType||type===fType;
+  ensureV2Index();
+  const val=id=>(document.getElementById(id)?.value||'').trim();
+  const on=k=>!!document.getElementById('pf-'+k)?.checked;
+  const F={tech:val('pf-tech'),customer:val('pf-customer'),status:val('pf-status'),type:val('pf-type'),
+    from:val('pf-date-from'),to:val('pf-date-to'),compFrom:val('pf-comp-from'),compTo:val('pf-comp-to'),
+    text:val('pf-text').toLowerCase(),wos:pdfParseWOs(val('pf-wos'))};
+  const woSet=new Set(F.wos);
+  const anyFilter=!!(F.tech||F.customer||F.status||F.type||F.from||F.to||F.compFrom||F.compTo||F.text||F.wos.length);
+  const sel=PDF_SECTIONS.filter(([k])=>on(k)).map(([k])=>k);
+  if(!sel.length&&F.wos.length!==1){alert('Pick at least one section (or enter a single W/O # for a job detail page).');return;}
+  const lc=s=>String(s||'').trim().toLowerCase();
+  const inRange=(d,a,b)=>{if(!d)return true;if(a&&d<a)return false;if(b&&d>b)return false;return true;};
+  // Generic row test. r: {wo,tech,customer,type,status,date,txt}. A filter on a field the row doesn't carry (undefined) drops it.
+  const pass=(r,opt={})=>{
+    if(woSet.size&&(r.wo===undefined||!woSet.has(String(r.wo||'').trim())))return false;
+    if(F.tech&&(r.tech===undefined||!techMatch(r.tech,F.tech)))return false;
+    if(F.customer&&(r.customer===undefined||lc(r.customer)!==lc(F.customer)))return false;
+    if(F.status&&(r.status===undefined||r.status!==F.status))return false;
+    if(F.type&&(r.type===undefined||(F.type==='Quoted'?!(r.type==='Quoted'||r.src==='Quoted'):r.type!==F.type)))return false;
+    if(!opt.noDate&&!inRange(r.date,F.from,F.to))return false;
+    if(F.text&&!lc(r.txt).includes(F.text))return false;
+    return true;
+  };
+  const txt=(...a)=>a.map(x=>Array.isArray(x)?x.join(' '):(x==null?'':String(x))).join(' ');
+  const jobOf=wo=>(data.jobs&&data.jobs[String(wo||'').trim()])||{};
 
   const {jsPDF}=window.jspdf;
   const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
   const now=new Date();let y=15;const pageW=210,margin=14,colW=pageW-margin*2;
+  let curHead=null;
+  const newPage=()=>{doc.addPage();y=15;if(curHead)drawHead(curHead.cols,curHead.widths);};
+  const need=h=>{if(y+h>275){const h0=curHead;curHead=null;doc.addPage();y=15;curHead=h0;}};
+  const fit=(s,w)=>{s=String(s==null||s===''?'\u2014':s).replace(/\s+/g,' ');if(doc.getTextWidth(s)<=w)return s;while(s.length>1&&doc.getTextWidth(s+'\u2026')>w)s=s.slice(0,-1);return s+'\u2026';};
 
+  // Header + filter summary
   doc.setFontSize(16);doc.setFont(undefined,'bold');doc.text('Accutemp Ops Report',margin,y);y+=7;
   doc.setFontSize(10);doc.setFont(undefined,'normal');doc.setTextColor(100);
-  let subtitle=`Generated ${now.toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})}`;
-  if(fTech)subtitle+=` \u2014 Tech: ${fTech}`;
-  if(fType)subtitle+=` \u2014 Type: ${fType}`;
-  if(fDateFrom||fDateTo)subtitle+=` \u2014 ${fDateFrom?fmtDate(fDateFrom):'start'} to ${fDateTo?fmtDate(fDateTo):'today'}`;
-  if(fCompFrom||fCompTo)subtitle+=` \u2014 Completed: ${fCompFrom?fmtDate(fCompFrom):'start'} to ${fCompTo?fmtDate(fCompTo):'today'}`;
-  doc.text(subtitle,margin,y);y+=10;doc.setTextColor(0);
+  doc.text(`Generated ${now.toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})} ${now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}`,margin,y);y+=5;
+  const fs=[];
+  if(F.wos.length)fs.push(`W/O #: ${F.wos.join(', ')}`);
+  if(F.tech)fs.push(`Tech: ${F.tech}`);
+  if(F.customer)fs.push(`Customer: ${F.customer}`);
+  if(F.status)fs.push(`Status: ${F.status}`);
+  if(F.type)fs.push(`Type: ${F.type}`);
+  if(F.from||F.to)fs.push(`Dates: ${F.from?fmtDate(F.from):'start'} to ${F.to?fmtDate(F.to):'any'}`);
+  if(F.compFrom||F.compTo)fs.push(`Completed: ${F.compFrom?fmtDate(F.compFrom):'start'} to ${F.compTo?fmtDate(F.compTo):'today'}`);
+  if(F.text)fs.push(`Search: "${val('pf-text')}"`);
+  doc.setFontSize(9);
+  doc.splitTextToSize('Filters: '+(fs.length?fs.join(' \u00b7 '):'None (all data)'),colW).forEach(l=>{doc.text(l,margin,y);y+=4.5;});
+  y+=5;doc.setTextColor(0);
 
   function sH(title,color){
-    if(color){doc.setFillColor(...color);}else{doc.setFillColor(245,245,243);}
-    doc.rect(margin,y-4,colW,7,'F');doc.setFont(undefined,'bold');doc.setFontSize(11);doc.text(title,margin,y);y+=7;doc.setFont(undefined,'normal');doc.setFontSize(9);
+    curHead=null;need(16);
+    doc.setFillColor(...(color||[245,245,243]));
+    doc.rect(margin,y-4.5,colW,7,'F');doc.setFont(undefined,'bold');doc.setFontSize(11);doc.setTextColor(30);doc.text(title,margin+1.5,y);y+=7;
+    doc.setTextColor(0);doc.setFont(undefined,'normal');doc.setFontSize(9);
   }
-  function rowW(cells,widths){let x=margin;for(let i=0;i<cells.length;i++){doc.text(String(cells[i]||'\u2014').substring(0,26),x,y);x+=widths[i];}y+=5;if(y>270){doc.addPage();y=15;}}
-  function tH(cols,widths){doc.setFont(undefined,'bold');doc.setFontSize(8);doc.setTextColor(100);let x=margin;cols.forEach((c,i)=>{doc.text(c,x,y);x+=widths[i];});y+=5;doc.setTextColor(0);doc.setFont(undefined,'normal');doc.setFontSize(9);}
+  function drawHead(cols,widths){doc.setFont(undefined,'bold');doc.setFontSize(8);doc.setTextColor(100);let x=margin;cols.forEach((c,i)=>{doc.text(c,x,y);x+=widths[i];});y+=5;doc.setTextColor(0);doc.setFont(undefined,'normal');doc.setFontSize(9);}
+  function tH(cols,widths){need(10);drawHead(cols,widths);curHead={cols,widths};}
+  function rowW(cells,widths){let x=margin;doc.setFontSize(9);for(let i=0;i<cells.length;i++){doc.text(fit(cells[i],widths[i]-2),x,y);x+=widths[i];}y+=5;if(y>270)newPage();}
+  function sub(text){curHead=null;need(10);doc.setFont(undefined,'bold');doc.setFontSize(9.5);doc.setTextColor(60);doc.text(text,margin,y);y+=5;doc.setTextColor(0);doc.setFont(undefined,'normal');doc.setFontSize(9);}
+  function emptyLine(msg){doc.setTextColor(150);doc.text(msg,margin,y);doc.setTextColor(0);y+=6;}
+  function gap(){curHead=null;y+=4;}
+  let printed=0;const skipped=[];
+  // Run a section: skip it when empty and any filter is on; otherwise print a "No matching" line.
+  function section(title,rows,color,draw,emptyMsg){
+    if(!rows.length&&anyFilter){skipped.push(title);return;}
+    sH(`${title} (${rows.length})`,color);
+    printed++;
+    if(rows.length)draw(rows);else emptyLine(emptyMsg||'No matching items');
+    gap();
+  }
+  const money=v=>v||v===0?'$'+parseFloat(v).toLocaleString('en-US',{maximumFractionDigits:0}):'\u2014';
+  const W=a=>{const s=a.slice(0,-1).reduce((x,y)=>x+y,0);return a.slice(0,-1).concat([colW-s]);};
 
-  // ── Completed / Billable Jobs ──────────────────────────
-  if(inclCompleted){
-    const billable=data.archive.filter(r=>{
-      if(!r.item)return false;
-      const item=r.item;
-      const tech=item.tech||(item.techs||[]).join(', ')||'';
-      return techMatch(tech)&&typeMatch(item.type)&&inCompRange(r.date);
+  // ── Action Queue ──
+  if(on('aq')){
+    const rows=boardRows().filter(r=>pass({wo:r.wo_num,tech:r.tech,customer:r.customer,type:r.type,status:r.status,date:r.date,src:r.src,txt:txt(r.wo_num,r.customer,r.tech,r.status,r.notes)}));
+    const groups=ACTION_BUCKETS.map(b=>({b,rows:rows.filter(b.test)})).filter(g=>g.rows.length);
+    const total=groups.reduce((n,g)=>n+g.rows.length,0);
+    section('Action Queue',groups.length?groups:[],[238,238,236],gs=>{
+      doc.setTextColor(100);doc.text(`${total} flagged row${total!==1?'s':''} across ${gs.length} bucket${gs.length!==1?'s':''} (a job can sit in more than one)`,margin,y);doc.setTextColor(0);y+=6;
+      const w=W([22,48,28,46,20,0]);
+      gs.forEach(g=>{sub(`${g.b.label} (${g.rows.length})`);tH(['W/O #','Customer','Tech','Status','Date','Src'],w);
+        g.rows.forEach(r=>rowW([r.wo_num,r.customer,r.tech,r.status,fmtDate(r.date),r.src],w));y+=2;});
+    },'No flagged jobs');
+  }
+  // ── Open Work Orders ──
+  if(on('wo')){
+    const rows=data.wo.filter(r=>!r.completed&&pass({wo:r.wo_num,tech:r.tech||'',customer:r.customer||'',type:r.type,status:r.status,date:r.due,txt:txt(r.wo_num,r.customer,r.tech,r.status,r.notes)}));
+    const w=W([20,42,24,16,42,18,0]);
+    section('Open Work Orders',rows,null,rs=>{tH(['W/O #','Customer','Tech','Type','Status','Due','Age'],w);rs.forEach(r=>{const age=calcAge(r.created);rowW([r.wo_num,r.customer,r.tech,r.type,r.status,fmtDate(r.due),age!==null?age+'d':'\u2014'],w);});},'No matching work orders');
+  }
+  // ── Quoted ──
+  if(on('quoted')){
+    const rows=data.quoted.filter(r=>pass({wo:r.wo_num,tech:(r.techs||[]).filter(Boolean).join(', '),customer:r.customer||'',type:r.type,status:r.status,date:r.date,src:'Quoted',txt:txt(r.wo_num,r.customer,r.techs,r.status,r.notes)}));
+    const w=W([20,40,28,12,20,40,0]);
+    section('Quoted Jobs',rows,null,rs=>{tH(['W/O #','Customer','Techs','Hrs Q','Cost Q','Status','Date'],w);rs.forEach(r=>rowW([r.wo_num,r.customer,(r.techs||[]).filter(Boolean).join(', '),r.hrs_quoted,r.cost_quoted?money(r.cost_quoted):'\u2014',r.status,fmtDate(r.date)],w));},'No matching quoted jobs');
+  }
+  // ── Parts ── (customer/type/status come from the job record for that W/O)
+  if(on('parts')){
+    const rows=data.parts.filter(r=>{const j=jobOf(r.wo_num);return pass({wo:r.wo_num,tech:r.tech||'',customer:r.customer||j.customer,type:j.type,status:j.status,date:r.eta,txt:txt(r.wo_num,r.customer||j.customer,r.tech,r.part,r.supplier,r.notes)});});
+    const w=W([20,36,24,50,26,0]);
+    section('Parts Pipeline',rows,null,rs=>{tH(['W/O #','Customer','Tech','Part','Supplier','ETA'],w);rs.forEach(r=>rowW([r.wo_num,r.customer||jobOf(r.wo_num).customer,r.tech,r.part,r.supplier,fmtDate(r.eta)],w));},'No matching parts');
+  }
+  // ── Scheduled ──
+  if(on('scheduled')){
+    const rows=data.scheduled.filter(r=>pass({wo:r.wo_num,tech:r.tech||'',customer:r.customer||'',type:r.type,status:r.status,date:r.date,txt:txt(r.wo_num,r.customer,r.tech,r.status,r.notes)}));
+    const w=W([20,26,44,18,44,0]);
+    section('Scheduled Jobs',rows,null,rs=>{tH(['W/O #','Tech','Customer','Type','Status','Date'],w);rs.forEach(r=>rowW([r.wo_num,r.tech,r.customer,r.type,r.status,fmtDate(r.date)],w));},'No matching scheduled jobs');
+  }
+  // ── Callbacks ── (no W/O #, type, or status on these rows)
+  if(on('callbacks')){
+    const rows=data.callbacks.filter(r=>pass({wo:r.wo_num,tech:r.tech||'',customer:r.customer||'',date:r.deadline,txt:txt(r.wo_num,r.customer,r.tech,r.reason)}));
+    const w=W([44,26,72,20,0]);
+    section('Callbacks',rows,null,rs=>{tH(['Customer','Tech','Reason','Flagged','Deadline'],w);rs.forEach(r=>rowW([r.customer,r.tech,r.reason,fmtDate(r.flagged),fmtDate(r.deadline)],w));},'No matching callbacks');
+  }
+  // ── Tasks ── (personal; only date + text filters apply, other filters drop them)
+  if(on('tasks')){
+    const rows=data.tasks.filter(r=>pass({date:r.due,txt:txt(r.task,r.category,r.notes)}));
+    const w=W([70,30,22,0]);
+    section('My Tasks',rows,null,rs=>{tH(['Task','Category','Due','Notes'],w);rs.forEach(r=>rowW([r.task,r.category,fmtDate(r.due),r.notes],w));},'No matching tasks');
+  }
+  // ── Completed / Billable (archive) ──
+  if(on('completed')){
+    const rows=data.archive.filter(r=>{
+      if(!r.item)return false;const it=r.item;
+      const tech=it.tech||(it.techs||[]).filter(Boolean).join(', ')||'';
+      return pass({wo:it.wo_num,tech,customer:it.customer||'',type:it.type||r.type,status:it.status,date:r.date,src:r.type==='quoted'?'Quoted':'',txt:txt(it.wo_num,it.customer,tech,it.notes,it.status)},{noDate:true})&&inRange(r.date,F.compFrom,F.compTo);
     });
-    const rangeLabel=(fCompFrom||fCompTo)?` — ${fCompFrom?fmtDate(fCompFrom):'start'} to ${fCompTo?fmtDate(fCompTo):'today'}`:'';
-    sH(`Completed / Billable Jobs (${billable.length})${rangeLabel}`,[230,245,235]);
-    if(billable.length){
-      tH(['W/O #','Customer','Tech','Type','Completed','Billed','Our Cost'],[22,35,22,16,22,22,colW-139]);
-      let totalBilled=0,totalOur=0;
-      billable.forEach(r=>{
-        const it=r.item;
-        const tech=it.tech||(it.techs||[]).filter(Boolean).join(', ')||'\u2014';
+    const rangeLabel=(F.compFrom||F.compTo)?` \u2014 ${F.compFrom?fmtDate(F.compFrom):'start'} to ${F.compTo?fmtDate(F.compTo):'today'}`:'';
+    const w=W([20,40,24,16,20,22,0]);
+    section('Completed / Billable Jobs'+rangeLabel,rows,[230,245,235],rs=>{
+      tH(['W/O #','Customer','Tech','Type','Completed','Billed','Our Cost'],w);
+      let tb=0,to=0;
+      rs.forEach(r=>{const it=r.item;const tech=it.tech||(it.techs||[]).filter(Boolean).join(', ')||'\u2014';
         const billed=it.customer_cost!=null?parseFloat(it.customer_cost):r.type==='quoted'&&it.cost_quoted?parseFloat(it.cost_quoted):0;
         const our=it.our_cost!=null?parseFloat(it.our_cost):it.cost_actual?parseFloat(it.cost_actual):0;
-        if(billed)totalBilled+=billed;
-        if(our)totalOur+=our;
-        const billedStr=billed?'$'+billed.toLocaleString('en-US',{maximumFractionDigits:0}):'\u2014';
-        const ourStr=our?'$'+our.toLocaleString('en-US',{maximumFractionDigits:0}):'\u2014';
-        rowW([it.wo_num,it.customer||'\u2014',tech,it.type||r.type,fmtDate(r.date),billedStr,ourStr],[22,35,22,16,22,22,colW-139]);
+        if(billed)tb+=billed;if(our)to+=our;
+        rowW([it.wo_num,it.customer,tech,it.type||r.type,fmtDate(r.date),billed?money(billed):'\u2014',our?money(our):'\u2014'],w);});
+      need(8);doc.setFont(undefined,'bold');doc.text(`TOTAL: ${rs.length} jobs`,margin,y);
+      if(tb)doc.text(`Billed: ${money(tb)}`,margin+100,y);if(to)doc.text(`Our Cost: ${money(to)}`,margin+140,y);
+      doc.setFont(undefined,'normal');y+=7;
+    },'No completed jobs in this range');
+  }
+  // ── PM Tracker ── (same rows as the PM tab)
+  if(on('pm')){
+    const rows=pmRows().filter(r=>pass({wo:r.wo_num,tech:r.tech,customer:r.customer,type:'PM',status:r.status,date:r.date,src:r.src,txt:txt(r.wo_num,r.tech,r.customer,r.notes,r.status)}))
+      .sort((a,b)=>(pmIsOverdue(b)-pmIsOverdue(a))||String(a.month||'9999').localeCompare(String(b.month||'9999'))||String(a.customer).localeCompare(String(b.customer)));
+    const w=W([20,44,24,18,36,18,12,0]);
+    section('PM Tracker',rows,null,rs=>{
+      const od=rs.filter(pmIsOverdue).length;doc.setTextColor(100);doc.text(`${rs.length} PM${rs.length!==1?'s':''} \u00b7 ${od} overdue`,margin,y);doc.setTextColor(0);y+=6;
+      tH(['W/O #','Customer','Tech','Due Mo','Status','Date','Src','Hrs used/Q'],w);
+      rs.forEach(r=>{const pm=r.pm||{};const hq=pm.hrsQuoted||r.hrs;const hu=pm.hrsUsed;
+        rowW([r.wo_num,r.customer,r.tech||'Unassigned',(r.month||'\u2014')+(pmIsOverdue(r)?' !':''),r.status,fmtDate(r.date),r.src,hq?(hu?hu+' / ':'')+hq+'h':'\u2014'],w);});
+    },'No matching PMs');
+  }
+  // ── Scoreboard ── (one block per tech; tech filter picks the techs)
+  if(on('score')){
+    const techs=getAllTechs();const un=scoreJobsFor('Unassigned');
+    const list=[...techs,...(un.openJobs.length?['Unassigned']:[])].filter(t=>!F.tech||t===F.tech);
+    const blocks=list.map(tech=>{
+      const {openJobs,completed}=scoreJobsFor(tech);
+      const m=openJobs.filter(j=>pass({wo:j.wo_num,tech:tech==='Unassigned'?'':tech,customer:j.customer,type:j.type,status:j.status,date:j.date,src:j.src,txt:txt(j.wo_num,j.customer,tech,j.status,j.notes)},{}))
+        .map(j=>j);
+      return{tech,openJobs,completed,m};
+    }).filter(b=>b.m.length||(!anyFilter));
+    section('Scoreboard',blocks,null,bs=>{
+      const w=W([20,46,18,42,20,0]);
+      bs.forEach(b=>{
+        const od=b.openJobs.filter(j=>isOverdue(j.date)).length;
+        const cb=b.tech==='Unassigned'?0:data.callbacks.filter(r=>techMatch(r.tech,b.tech)).length;
+        const pp=b.tech==='Unassigned'?0:data.parts.filter(r=>techMatch(r.tech,b.tech)).length;
+        const bits=[`${b.openJobs.length} open`];if(anyFilter)bits.push(`${b.m.length} match`);if(od)bits.push(`${od} overdue`);if(cb)bits.push(`${cb} callback${cb!==1?'s':''}`);if(pp)bits.push(`${pp} part${pp!==1?'s':''} pending`);if(b.tech!=='Unassigned')bits.push(`${b.completed.length} completed`);
+        need(18);doc.setFillColor(250,250,248);doc.rect(margin,y-4.5,colW,6.5,'F');
+        doc.setFont(undefined,'bold');doc.setFontSize(10);doc.text(b.tech,margin+1.5,y);doc.setFont(undefined,'normal');doc.setFontSize(8.5);doc.setTextColor(100);doc.text(bits.join(' \u00b7 '),margin+45,y);doc.setTextColor(0);y+=6.5;
+        if(b.m.length){tH(['W/O #','Customer','Type','Status','Date','Src'],w);b.m.forEach(j=>rowW([j.wo_num,j.customer,j.type,j.status,fmtDate(j.date)+(isOverdue(j.date)?' !':''),j.src],w));}
+        else emptyLine('No open jobs');
+        curHead=null;y+=3;
       });
-      doc.setFont(undefined,'bold');doc.setFontSize(9);
-      doc.text(`TOTAL: ${billable.length} jobs`,margin,y);
-      if(totalBilled)doc.text(`Billed: $${totalBilled.toLocaleString('en-US',{maximumFractionDigits:0})}`,margin+100,y);
-      if(totalOur)doc.text(`Our Cost: $${totalOur.toLocaleString('en-US',{maximumFractionDigits:0})}`,margin+140,y);
-      doc.setFont(undefined,'normal');
-      y+=7;
-    }else{doc.setTextColor(150);doc.text('No completed jobs in this range',margin,y);doc.setTextColor(0);y+=6;}
-    y+=4;
+    },'No techs');
+  }
+  // ── Job detail (exactly one W/O requested) ──
+  if(F.wos.length===1){
+    const wo=F.wos[0];const j=data.jobs&&data.jobs[wo];
+    const arch=(data.archive||[]).filter(a=>a.item&&String(a.item.wo_num||'').trim()===wo);
+    const it=arch[0]&&arch[0].item;
+    if(j||it){
+      const cust=(j&&j.customer)||(it&&it.customer)||'';
+      sH(`Job Detail \u2014 W/O #${wo}${cust?' \u2014 '+cust:''}`,[230,245,235]);
+      const kv=(k,v)=>{if(v==null||v==='')return;need(6);doc.setFont(undefined,'bold');doc.setTextColor(90);doc.text(k,margin,y);doc.setFont(undefined,'normal');doc.setTextColor(0);
+        const ls=doc.splitTextToSize(String(v),colW-38);ls.forEach((l,i)=>{if(i)need(5);doc.text(l,margin+38,y);y+=4.6;});y+=0.8;};
+      const head=t=>{curHead=null;need(10);y+=2;doc.setFont(undefined,'bold');doc.setFontSize(9.5);doc.setTextColor(60);doc.text(t,margin,y);doc.setDrawColor(220);doc.line(margin,y+1.2,margin+colW,y+1.2);y+=6;doc.setTextColor(0);doc.setFont(undefined,'normal');doc.setFontSize(9);};
+      const techs=(j&&(j.techs||[]).join(', '))||(it&&(it.tech||(it.techs||[]).filter(Boolean).join(', ')))||'';
+      const tabName={wo:'Work Orders',quoted:'Quoted',scheduled:'Scheduled',archive:'Archive'};
+      kv('Customer / Site',cust);kv('Tech(s)',techs||'Unassigned');kv('Type',(j&&j.type)||(it&&it.type)||'');
+      kv('Status',(j&&j.status)||(it&&it.status)||'');kv('On board',j&&(j.tabs||[]).map(t=>tabName[t]||t).join(', '));
+      kv('Created',j&&j.created?fmtDate(j.created):'');kv('Due / Date',j&&j.due?fmtDate(j.due):'');
+      const woRow=data.wo.find(w=>w.wo_num===wo);if(woRow&&woRow.created){const a=calcAge(woRow.created);if(a!==null)kv('Age',a+' days');}
+      if(arch.length)kv('Completed',arch.map(a=>fmtDate(a.date)).join(', '));
+      head('Notes');kv('Notes',(j&&j.notes)||(it&&it.notes)||'\u2014');
+      const m=(j&&j.money)||{};const q=j&&j.quote;
+      if(m.hrs_quoted!=null||m.cost_quoted!=null||q||(it&&(it.customer_cost!=null||it.our_cost!=null||it.cost_quoted||it.cost_actual))){
+        head('Money');
+        if(m.hrs_quoted!=null)kv('Hrs quoted',String(m.hrs_quoted));
+        if(m.cost_quoted!=null)kv('Cost quoted',money(m.cost_quoted));
+        if(q){kv('Quote status',q.status);kv('Quote date',q.date?fmtDate(q.date):'');kv('Approved',m.approved?'Yes':'No');}
+        if(it){if(it.customer_cost!=null)kv('Billed',money(it.customer_cost));if(it.our_cost!=null)kv('Our cost',money(it.our_cost));else if(it.cost_actual)kv('Actual cost',money(it.cost_actual));if(it.hrs_actual)kv('Hrs actual',String(it.hrs_actual));}
+      }
+      const parts=(j&&j.parts)||[];
+      head(`Parts (${parts.length})`);
+      if(parts.length){const w=W([70,40,26,0]);tH(['Part','Supplier','Ordered','ETA'],w);parts.forEach(p=>rowW([p.part,p.supplier,fmtDate(p.ordered),fmtDate(p.eta)],w));curHead=null;}
+      else emptyLine('No parts tracked');
+      if(j&&j.pm){const pm=j.pm;head('PM progress');kv('Due month',pm.dueMonth);kv('Next visit',pm.nextVisit?fmtDate(pm.nextVisit):'');kv('Hrs quoted',pm.hrsQuoted);kv('Hrs used',pm.hrsUsed);kv('% tasks done',pm.pctDone!==''&&pm.pctDone!=null?pm.pctDone+'%':'');kv('Materials',pm.materials);}
+      const s=findSite(cust);
+      if(s&&(s.preferredTech||s.accessNotes||s.lastFindings||(s.equipment||[]).length||(s.openRecs||[]).length)){
+        head('Site memory');kv('Preferred tech',s.preferredTech);kv('Access',s.accessNotes);kv('Equipment',(s.equipment||[]).join(', '));kv('Open Recs',(s.openRecs||[]).join(', '));kv('Last findings',s.lastFindings);
+      }
+      printed++;gap();
+    }else{skipped.push('Job Detail');}
   }
 
-  if(inclWO){
-    const rows=data.wo.filter(r=>!r.completed&&techMatch(r.tech)&&typeMatch(r.type)&&inDateRange(r.due));
-    sH(`Open Work Orders (${rows.length})`);
-    if(rows.length){tH(['W/O #','Customer','Tech','Type','Status','Due','Age'],[22,35,22,16,44,20,colW-159]);rows.forEach(r=>{const age=calcAge(r.created);rowW([r.wo_num,r.customer||'\u2014',r.tech,r.type,r.status,fmtDate(r.due),age!==null?age+'d':'\u2014'],[22,35,22,16,44,20,colW-159]);});}
-    else{doc.setTextColor(150);doc.text('No matching work orders',margin,y);doc.setTextColor(0);y+=6;}
-    y+=4;
-  }
-  if(inclQuoted){
-    const rows=data.quoted.filter(r=>techMatch((r.techs||[]).join(','))&&typeMatch(r.type)&&inDateRange(r.date));
-    sH(`Quoted Jobs (${rows.length})`);
-    if(rows.length){tH(['W/O #','Customer','Techs','Hrs Q','Cost Q','Status'],[22,40,32,15,25,colW-134]);rows.forEach(r=>rowW([r.wo_num,r.customer,(r.techs||[]).filter(Boolean).join(', '),r.hrs_quoted,r.cost_quoted?'$'+parseInt(r.cost_quoted).toLocaleString():'\u2014',r.status],[22,40,32,15,25,colW-134]));}
-    else{doc.setTextColor(150);doc.text('No matching quoted jobs',margin,y);doc.setTextColor(0);y+=6;}
-    y+=4;
-  }
-  if(inclParts){
-    const rows=data.parts.filter(r=>techMatch(r.tech)&&inDateRange(r.eta));
-    sH(`Parts Pipeline (${rows.length})`);
-    if(rows.length){tH(['W/O #','Tech','Part','Supplier','ETA'],[22,28,55,28,colW-133]);rows.forEach(r=>rowW([r.wo_num,r.tech,r.part,r.supplier,fmtDate(r.eta)],[22,28,55,28,colW-133]));}
-    else{doc.setTextColor(150);doc.text('No matching parts',margin,y);doc.setTextColor(0);y+=6;}
-    y+=4;
-  }
-  if(inclScheduled){
-    const rows=data.scheduled.filter(r=>techMatch(r.tech)&&typeMatch(r.type)&&inDateRange(r.date));
-    sH(`Scheduled Jobs (${rows.length})`);
-    if(rows.length){tH(['W/O #','Tech','Customer','Type','Status','Date'],[22,28,40,20,45,colW-155]);rows.forEach(r=>rowW([r.wo_num,r.tech,r.customer,r.type,r.status,fmtDate(r.date)],[22,28,40,20,45,colW-155]));}
-    else{doc.setTextColor(150);doc.text('No matching scheduled jobs',margin,y);doc.setTextColor(0);y+=6;}
-    y+=4;
-  }
-  if(inclCallbacks){
-    const rows=data.callbacks.filter(r=>techMatch(r.tech)&&inDateRange(r.deadline));
-    sH(`Callbacks (${rows.length})`);
-    if(rows.length){tH(['Customer','Tech','Deadline'],[60,40,colW-100]);rows.forEach(r=>rowW([r.customer,r.tech,fmtDate(r.deadline)],[60,40,colW-100]));}
-    else{doc.setTextColor(150);doc.text('No matching callbacks',margin,y);doc.setTextColor(0);y+=6;}
-    y+=4;
-  }
-  if(inclTasks){
-    const rows=data.tasks.filter(r=>inDateRange(r.due));
-    sH(`My Tasks (${rows.length})`);
-    if(rows.length){tH(['Task','Category','Due'],[80,35,colW-115]);rows.forEach(r=>rowW([r.task,r.category,fmtDate(r.due)],[80,35,colW-115]));}
-    else{doc.setTextColor(150);doc.text('No matching tasks',margin,y);doc.setTextColor(0);y+=6;}
-  }
+  if(!printed){alert('Nothing matches these filters'+(F.wos.length?` (W/O #${F.wos.join(', ')})`:'')+'. Loosen a filter or check more sections.');return;}
+  if(skipped.length&&anyFilter&&!F.wos.length&&y<280){curHead=null;y+=2;doc.setFontSize(8);doc.setTextColor(140);doc.text(fit('No matches (left out): '+skipped.join(', '),colW),margin,y);doc.setTextColor(0);}
+  // Footer page numbers
+  const n=doc.getNumberOfPages();
+  for(let i=1;i<=n;i++){doc.setPage(i);doc.setFontSize(8);doc.setTextColor(150);doc.text(`Accutemp Ops Report \u00b7 Page ${i} of ${n}`,pageW-margin,290,{align:'right'});}
+  doc.setTextColor(0);
 
-  const datePart=now.toISOString().split('T')[0];
-  const techPart=fTech?`-${fTech}`:'';
-  doc.save(`Accutemp-Ops${techPart}-${datePart}.pdf`);
+  const pad=x=>String(x).padStart(2,'0');
+  const datePart=`${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
+  const label=F.tech||F.customer||(F.wos.length===1?'WO'+F.wos[0]:F.wos.length?`WOs-${F.wos.length}`:'')||(anyFilter?'filtered':'All');
+  const safe=String(label).replace(/[^A-Za-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,40)||'filtered';
+  doc.save(`Accutemp-Ops-${safe}-${datePart}.pdf`);
   closePDFModal();
 }
 
