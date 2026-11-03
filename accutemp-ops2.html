@@ -604,6 +604,20 @@ function setActionFilter(k){
 }
 
 // ── Job record modal (one job, one record) ───────────────
+function jobStatusOptions(j){
+  const quoted=['Scheduled','In Progress','Approved - Awaiting Parts','Parts Arrived - Schedule Now','On Hold','Quoted'];
+  const wo=['In Progress','Waiting on Parts','Parts Arrived - Schedule Now','Waiting on Customer','Needs Follow-up','Needs Quote'];
+  const sched=['Approved - Awaiting Parts','Parts Arrived - Schedule Now','Scheduled','On Hold'];
+  const tabs=j.tabs||[];
+  let opts=[];
+  if(tabs.includes('quoted'))opts=opts.concat(quoted);
+  if(tabs.includes('wo'))opts=opts.concat(wo);
+  if(tabs.includes('scheduled'))opts=opts.concat(sched);
+  if(!opts.length)opts=quoted.concat(wo);
+  opts=[...new Set(opts)];
+  if(j.status&&!opts.includes(j.status))opts.unshift(j.status);
+  return opts;
+}
 function openJob(wo){
   ensureV2Index();
   const j=data.jobs[wo];if(!j){alert('No job record for W/O #'+wo);return;}
@@ -614,14 +628,29 @@ function openJob(wo){
   const woRow=data.wo.find(w=>w.wo_num===wo);
   const log=(woRow&&woRow.log||[]).concat(j.log||[]).slice(0,8).map(e=>`<div class="job-line"><span class="job-sub">${escH(e.ts)}</span> ${escH(e.msg)}</div>`).join('')||'<div class="job-sub">No activity yet</div>';
   const m=j.money||{};
+  const statusOpts=jobStatusOptions(j).map(st=>`<option value="${escH(st)}"${st===j.status?' selected':''}>${escH(st)}</option>`).join('');
+  const schedDate=j.due||(j.quote&&j.quote.date)||'';
   document.getElementById('job-modal-content').innerHTML=`
     <h3>W/O #${escH(j.wo_num)} \u2014 ${escH(j.customer||'')}</h3>
-    <div class="job-head">${typeBadge(j.type)} ${badge(j.status||'Open')} <span class="job-sub">Tech: ${escH((j.techs||[]).join(', ')||'Unassigned')} \u00b7 Created ${fmtDate(j.created)} \u00b7 Due ${fmtDate(j.due)}${j.archived!==undefined?' \u00b7 Archived '+fmtDate(j.archived):''}</span></div>
+    <div class="job-head">${typeBadge(j.type)} <span class="job-sub">Tech: ${escH((j.techs||[]).join(', ')||'Unassigned')} \u00b7 Created ${fmtDate(j.created)}${j.archived!==undefined?' \u00b7 Archived '+fmtDate(j.archived):''}</span></div>
     <div class="job-sub" style="margin:6px 0 10px">On: ${tabLinks||'\u2014'}</div>
-    <div class="job-sec">Notes</div><div class="job-notes">${escH(j.notes||'\u2014')}</div>
+    <div class="job-sec">Job</div>
+    <div class="form-grid">
+      <div class="form-row"><label>Status</label><select id="j-status">${statusOpts}</select></div>
+      <div class="form-row"><label>Scheduled / due date</label><input type="date" id="j-schedDate" value="${escH(schedDate)}"></div>
+      <div class="form-row"><label>Tech(s)</label><input id="j-techs" value="${escH((j.techs||[]).join(', '))}" placeholder="Dan, Chase"></div>
+      <div class="form-row"><label>Type</label><select id="j-type">${['Service','PM','Install','Quoted'].map(t=>`<option${(j.type||'')===t?' selected':''}>${t}</option>`).join('')}</select></div>
+    </div>
+    <div class="form-row"><label>Notes</label><textarea id="j-notes">${escH(j.notes||'')}</textarea></div>
     <div class="job-sec">Money</div>
     <div class="job-sub">Hrs quoted: <b>${m.hrs_quoted??'\u2014'}</b> \u00b7 Cost quoted: <b>${fmtCurrency(m.cost_quoted)}</b> \u00b7 ${m.approved?'<span class="badge badge-approved">Approved</span>':'<span class="badge badge-waiting">Not approved</span>'}</div>
     <div class="job-sec">Parts (${(j.parts||[]).length})</div>${parts}
+    <div class="form-grid" style="margin-top:8px">
+      <div class="form-row"><label>Add part</label><input id="j-newPart" placeholder="e.g. flue adapter"></div>
+      <div class="form-row"><label>Supplier</label><input id="j-newSupplier" placeholder="e.g. Johnstone"></div>
+      <div class="form-row"><label>Ordered</label><input type="date" id="j-newOrdered"></div>
+      <div class="form-row"><label>ETA</label><input type="date" id="j-newEta"></div>
+    </div>
     ${j.pm?`<div class="job-sec">PM progress</div>
     <div class="form-grid">
       <div class="form-row"><label>Due month</label><input id="j-dueMonth" value="${escH(pm.dueMonth||'')}" placeholder="YYYY-MM"></div>
@@ -648,16 +677,82 @@ function saveJob(wo){
   const j=data.jobs[wo];if(!j)return;
   const v=id=>{const el=document.getElementById(id);return el?el.value.trim():undefined;};
   const list=id=>(v(id)||'').split(',').map(x=>x.trim()).filter(Boolean);
+  const prevStatus=j.status||'';
+  const newStatus=v('j-status')||prevStatus;
+  const newDate=v('j-schedDate')||'';
+  const newNotes=v('j-notes')!==undefined?v('j-notes'):(j.notes||'');
+  const newTechs=list('j-techs');
+  const newType=v('j-type')||j.type||'';
+  const changes=[];
+  if(newStatus!==prevStatus)changes.push(`Status: ${prevStatus||'\u2014'} \u2192 ${newStatus}`);
+  if(newDate!==(j.due||''))changes.push(`Date: ${j.due||'\u2014'} \u2192 ${newDate||'\u2014'}`);
+  if(newNotes!==(j.notes||''))changes.push('Notes updated');
+  if((newTechs.join(', '))!==(j.techs||[]).join(', '))changes.push('Tech updated');
+
+  j.status=newStatus;j.due=newDate;j.notes=newNotes;j.type=newType;
+  if(newTechs.length)j.techs=newTechs;
+  if(j.quote){j.quote.status=newStatus;j.quote.date=newDate;}
+  if(j.money)j.money.approved=APPROVED_STATUSES.includes(newStatus);
+
+  // Push into live tab rows (Quoted / WO / Scheduled)
+  const qIdx=(data.quoted||[]).findIndex(r=>r.wo_num===wo);
+  if(qIdx>=0){
+    const q=data.quoted[qIdx];
+    q.status=newStatus;q.date=newDate;q.notes=newNotes;q.type=newType;
+    if(newTechs.length)q.techs=newTechs;
+    syncQuotedToScheduled(q);
+    upsertJobFromRow('quoted',q);
+  }
+  const wIdx=(data.wo||[]).findIndex(r=>r.wo_num===wo&&!r.completed);
+  if(wIdx>=0){
+    const w=data.wo[wIdx];
+    const prev=w.status||'';
+    w.status=newStatus;w.due=newDate;w.notes=newNotes;w.type=newType;
+    if(newTechs.length)w.tech=newTechs.join(', ');
+    if(!w.log)w.log=[];
+    if(prev&&prev!==newStatus)w.log.unshift({ts:nowTs(),msg:`Status changed: ${prev} \u2192 ${newStatus}`});
+    upsertJobFromRow('wo',w);
+  }
+  // Standalone scheduled (not a quoted mirror)
+  (data.scheduled||[]).forEach(s=>{
+    if(s.wo_num===wo&&!s._quoted_ref){
+      s.status=newStatus;s.date=newDate;s.notes=newNotes;s.type=newType;
+      if(newTechs.length)s.tech=newTechs.join(', ');
+      upsertJobFromRow('scheduled',s);
+    }
+  });
+  // If quoted-only and now Scheduled/Awaiting Parts/Parts Arrived with a date, ensure sync
+  if(qIdx<0&&wIdx<0){
+    // no-op — archive or orphan
+  }else if(qIdx>=0){
+    syncQuotedToScheduled(data.quoted[qIdx]);
+  }
+
+  // Optional new parts line
+  const partName=v('j-newPart');
+  if(partName){
+    const part={wo_num:wo,tech:(newTechs[0]||(j.techs||[])[0]||''),part:partName,supplier:v('j-newSupplier')||'',ordered:v('j-newOrdered')||'',eta:v('j-newEta')||''};
+    data.parts.push(part);
+    changes.push('Part added: '+partName);
+  }
+
   if(j.pm){['dueMonth','nextVisit','hrsQuoted','hrsUsed','pctDone','materials'].forEach(f=>{const x=v('j-'+f);if(x!==undefined)j.pm[f]=x;});}
   if(j.customer){
     const key=slugify(j.customer);
-    const s=data.sites[key]||(data.sites[key]={name:j.customer,equipment:[],lastFindings:'',openRecs:[],preferredTech:'',accessNotes:''});
-    s.preferredTech=v('j-preferredTech')||'';s.accessNotes=v('j-accessNotes')||'';s.lastFindings=v('j-lastFindings')||'';
-    s.equipment=list('j-equipment');s.openRecs=list('j-openRecs');
+    const site=data.sites[key]||(data.sites[key]={name:j.customer,equipment:[],lastFindings:'',openRecs:[],preferredTech:'',accessNotes:''});
+    site.preferredTech=v('j-preferredTech')||'';site.accessNotes=v('j-accessNotes')||'';site.lastFindings=v('j-lastFindings')||'';
+    site.equipment=list('j-equipment');site.openRecs=list('j-openRecs');
   }
-  if(!j.log)j.log=[];j.log.unshift({ts:nowTs(),msg:'Job record updated (PM / site memory)'});
+  if(!j.log)j.log=[];
+  j.log.unshift({ts:nowTs(),msg:changes.length?changes.join('; '):'Job record updated'});
+  j.lastChanged=new Date().toISOString();
+  j.lastChangeNote=j.log[0].msg;
+  ensureV2Index();
+  if(typeof jobSig==='function'){try{j._sig=jobSig(j);}catch(e){}}
   scheduleSave();closeJob();
+  updateStats();updateTechFilters();
   const active=ALL_TABS.find(t=>document.getElementById('tab-'+t).classList.contains('active'));if(active)switchTab(active);
+  else renderBoard();
 }
 
 // ── Scoreboard (collapsible + filterable) ─────────────────
@@ -889,7 +984,7 @@ function archiveNotDupe(wo_num){
   return!data.archive.some(a=>a.item&&a.item.wo_num===wo_num);
 }
 
-const SYNC_STATUSES=['Scheduled','Approved - Awaiting Parts'];
+const SYNC_STATUSES=['Scheduled','Approved - Awaiting Parts','Parts Arrived - Schedule Now'];
 function syncQuotedToScheduled(quotedItem){
   if(!quotedItem.wo_num)return;
   const shouldSync=quotedItem.date&&SYNC_STATUSES.includes(quotedItem.status);
