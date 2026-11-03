@@ -265,8 +265,12 @@ tr.row-new td:first-child{box-shadow:inset 3px 0 0 #111}tr.row-upd td:first-chil
 <div id="auth-screen">
   <h1>Accutemp Ops Board</h1>
   <p>Sign in to access your dashboard</p>
-  <div id="g_id_onload" data-client_id="684471418257-d5013g7bv614s9ao4bm9t40h2pgjlalr.apps.googleusercontent.com" data-callback="handleCredential" data-auto_prompt="true"></div>
-  <div class="g_id_signin" data-type="standard" data-size="large" data-text="sign_in_with"></div>
+  <p id="auth-error" style="display:none;color:#ea4335;font-size:13px;max-width:280px;text-align:center"></p>
+  <button type="button" id="btn-google-signin" onclick="startGoogleSignIn()" style="font-size:15px;padding:12px 20px;border-radius:8px;border:1px solid #dadce0;background:white;cursor:pointer;display:inline-flex;align-items:center;gap:10px;font-family:inherit;color:#3c4043;font-weight:500">
+    <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+    Sign in with Google
+  </button>
+  <p style="font-size:12px;color:#888;max-width:280px;text-align:center;margin-top:4px">One tap — opens Google for Drive access. Use Safari/Chrome, not an in-app browser.</p>
 </div>
 
 <div id="app">
@@ -793,19 +797,45 @@ function siteMemoryHTML(name){
   </div>`;
 }
 
-function handleCredential(r){const p=JSON.parse(atob(r.credential.split('.')[1]));document.getElementById('user-info').textContent=p.email;initOAuth();}
-function initOAuth(){
-  const c=google.accounts.oauth2.initTokenClient({client_id:CLIENT_ID,scope:SCOPES,callback:(t)=>{
-    if(t.error){setSync('error','Auth failed');return;}
-    accessToken=t.access_token;
-    document.getElementById('auth-screen').style.display='none';
-    document.getElementById('app').style.display='block';
-    document.getElementById('date-display').textContent=new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
-    loadFromDrive();
-  }});
+function showAuthError(msg){
+  const e=document.getElementById('auth-error');
+  if(!e)return;
+  e.style.display=msg?'block':'none';
+  e.textContent=msg||'';
+}
+function onAuthSuccess(token){
+  accessToken=token;
+  document.getElementById('auth-screen').style.display='none';
+  document.getElementById('app').style.display='block';
+  document.getElementById('date-display').textContent=new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
+  fetch('https://www.googleapis.com/oauth2/v3/userinfo',{headers:{Authorization:'Bearer '+accessToken}})
+    .then(r=>r.json()).then(u=>{if(u.email)document.getElementById('user-info').textContent=u.email;})
+    .catch(()=>{});
+  loadFromDrive();
+}
+function startGoogleSignIn(){
+  showAuthError('');
+  if(!(window.google&&google.accounts&&google.accounts.oauth2)){
+    showAuthError('Google sign-in still loading — wait a second and tap again.');
+    return;
+  }
+  const c=google.accounts.oauth2.initTokenClient({
+    client_id:CLIENT_ID,
+    scope:SCOPES,
+    callback:(t)=>{
+      if(t.error){showAuthError('Auth failed: '+(t.error_description||t.error));return;}
+      if(!t.access_token){showAuthError('No access token — try again in Safari or Chrome.');return;}
+      onAuthSuccess(t.access_token);
+    },
+    error_callback:(err)=>{
+      const m=(err&&(err.message||err.type))||'popup blocked or closed';
+      showAuthError('Sign-in did not finish ('+m+'). Tap again, or open this page in Safari/Chrome (not Instagram/Teams).');
+    }
+  });
+  // Must stay in the tap gesture — calling this from a GIS credential callback gets blocked on phones.
   c.requestAccessToken();
 }
-function signOut(){google.accounts.id.disableAutoSelect();accessToken=null;driveFileId=null;document.getElementById('auth-screen').style.display='flex';document.getElementById('app').style.display='none';}
+function signOut(){accessToken=null;driveFileId=null;document.getElementById('auth-screen').style.display='flex';document.getElementById('app').style.display='none';showAuthError('');}
 function setSync(s,m){const e=document.getElementById('sync-status');e.className='sync-status '+s;e.textContent=m;}
 
 async function loadFromDrive(){
