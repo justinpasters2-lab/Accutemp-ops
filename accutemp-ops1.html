@@ -240,6 +240,24 @@ tr:hover td{background:#fafafa}
 .site-mem-title{font-size:10px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:0.05em}
 .site-mem-k{color:#888;margin-right:4px}
 .site-mem-find{color:#555}
+
+/* ── ops2 UX pass ── */
+.section table thead th{position:sticky;top:var(--stick,0px);z-index:3;background:#fafafa}
+.section .toolbar{position:sticky;top:0;z-index:4;background:#f5f5f3;padding:8px 0;margin-bottom:4px}
+.kb{display:inline-block;font-size:10px;padding:1px 6px;border-radius:3px;font-weight:600;letter-spacing:.04em;border:1px solid #bbb;color:#333;background:#fff;margin-right:4px;vertical-align:middle}
+.kb-q{background:#333;color:#fff;border-color:#333}.kb-tm{background:#fff;color:#111;border-color:#111}.kb-pm{background:#e8e8e8;color:#333;border-color:#ccc}.kb-in{background:#fff;color:#555;border-style:dashed}
+.tg{display:inline-block;font-size:9px;padding:1px 5px;border-radius:2px;font-weight:700;letter-spacing:.06em;margin-left:4px;vertical-align:middle;text-transform:uppercase}
+.tg-new{background:#111;color:#fff}.tg-upd{background:#fff;color:#111;border:1px solid #111}.tg-wait{background:#eee;color:#555;border:1px solid #ccc}.tg-stale{background:#fff;color:#888;border:1px dotted #888}.tg-norec{background:#fff;color:#111;border:1px solid #111;text-decoration:underline}
+tr.row-new td:first-child{box-shadow:inset 3px 0 0 #111}tr.row-upd td:first-child{box-shadow:inset 3px 0 0 #888}tr.row-stale{opacity:.8}
+.since{background:#fff;border:1px solid #ddd;border-radius:6px;padding:10px 14px;margin-bottom:14px;font-size:13px}
+.since h3{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#333;margin-bottom:6px;display:flex;gap:10px;align-items:center}
+.since h3 span{font-weight:400;color:#888;text-transform:none;letter-spacing:0}
+.since-grp{margin:4px 0;line-height:1.9}.since-lbl{display:inline-block;width:72px;font-size:11px;color:#666;text-transform:uppercase;font-weight:600}
+.since-it{display:inline-block;border:1px solid #ddd;border-radius:4px;padding:0 7px;margin:0 4px 2px 0;font-size:12px;cursor:pointer;background:#fafafa}
+.since-it:hover{border-color:#111;background:#fff}.since-it small{color:#888}
+.since-toggle{font-size:11px;color:#555;cursor:pointer;text-decoration:underline;margin-left:auto}
+.kbd-hint{position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:11px;color:#999;border:1px solid #ddd;border-radius:4px;padding:0 5px;background:#fafafa}
+.legend{font-size:11px;color:#666;margin:-6px 0 12px}
 </style>
 </head>
 <body>
@@ -247,8 +265,12 @@ tr:hover td{background:#fafafa}
 <div id="auth-screen">
   <h1>Accutemp Ops Board</h1>
   <p>Sign in to access your dashboard</p>
-  <div id="g_id_onload" data-client_id="684471418257-d5013g7bv614s9ao4bm9t40h2pgjlalr.apps.googleusercontent.com" data-callback="handleCredential" data-auto_prompt="true"></div>
-  <div class="g_id_signin" data-type="standard" data-size="large" data-text="sign_in_with"></div>
+  <p id="auth-error" style="display:none;color:#ea4335;font-size:13px;max-width:280px;text-align:center"></p>
+  <button type="button" id="btn-google-signin" onclick="startGoogleSignIn()" style="font-size:15px;padding:12px 20px;border-radius:8px;border:1px solid #dadce0;background:white;cursor:pointer;display:inline-flex;align-items:center;gap:10px;font-family:inherit;color:#3c4043;font-weight:500">
+    <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+    Sign in with Google
+  </button>
+  <p style="font-size:12px;color:#888;max-width:280px;text-align:center;margin-top:4px">One tap — opens Google for Drive access. Use Safari/Chrome, not an in-app browser.</p>
 </div>
 
 <div id="app">
@@ -268,9 +290,11 @@ tr:hover td{background:#fafafa}
   <div id="promoted-banner" class="promoted-banner"></div>
   <div class="global-search-bar">
     <span class="search-icon">&#128269;</span>
-    <input type="text" id="global-search" placeholder="Global search across all tabs — W/O #, tech, customer, notes..." oninput="globalSearch()" onblur="setTimeout(()=>hideGlobalResults(),200)">
-    <div class="global-results" id="global-results"></div>
+    <input type="text" id="global-search" placeholder="Search everything — W/O #, tech, customer, notes, archive (Ctrl+K or /)" oninput="globalSearch()" onblur="setTimeout(()=>hideGlobalResults(),200)">
+    <span class="kbd-hint">Ctrl K</span><div class="global-results" id="global-results"></div>
   </div>
+  <div class="since" id="since-strip"></div>
+  <div class="legend"><span class="kb kb-q">QUOTED</span><span class="kb kb-tm">T&amp;M</span><span class="kb kb-pm">PM</span> job kind &nbsp;·&nbsp; <span class="tg tg-new">New</span> first seen &lt;24h <span class="tg tg-upd">Updated</span> changed last sync <span class="tg tg-wait">Waiting</span> quoted / parts / on hold <span class="tg tg-stale">Stale</span> T&amp;M or follow-up, no change 14d+ <span class="tg tg-norec">No Rec</span> Rec needed for sales</div>
   <div class="stats">
     <div class="stat"><div class="stat-num" id="s-wo">0</div><div class="stat-label">Open W/Os</div></div>
     <div class="stat"><div class="stat-num" id="s-quoted">0</div><div class="stat-label">Quoted Jobs</div></div>
@@ -298,7 +322,8 @@ tr:hover td{background:#fafafa}
     <div class="toolbar">
       <input type="text" placeholder="Filter by tech, W/O #, customer, type..." id="board-search" oninput="renderBoard()">
       <select id="board-tech-filter" onchange="renderBoard()"><option value="">All techs</option></select>
-      <select id="board-type-filter" onchange="renderBoard()"><option value="">All types</option><option>Service</option><option>PM</option><option>Install</option><option>Quoted</option></select>
+      <select id="board-type-filter" onchange="renderBoard()"><option value="">All kinds</option><option value="T&M">T&amp;M</option><option value="PM">PM</option><option value="Install">Install</option><option value="Quoted">Quoted</option></select>
+      <select id="board-tag-filter" onchange="renderBoard()"><option value="">All tags</option><option value="new">New</option><option value="upd">Updated</option><option value="wait">Waiting</option><option value="stale">Stale</option><option value="norec">No Rec</option></select>
     </div>
     <div class="board-filter-note" id="board-filter-note"></div>
     <table><thead><tr>
@@ -549,7 +574,7 @@ function renderSyncStamp(){
 let actionFilter=null;
 const RETURN_RX=/return (needed|not booked|visit needed)|no (future|return) visit|no visits? (scheduled|booked)|no return booked|not booked|paused|still not serviced|not serviced|not done/i;
 const ACTION_BUCKETS=[
-  {key:'quote',label:'Needs Quote',test:r=>r.status==='Needs Quote'||/\bneeds? (a )?quote\b|quote needed|get specs/i.test(r.notes)},
+  {key:'quote',label:'Rec Needed (no Rec entered)',test:r=>r.status==='Needs Quote'||/\bneeds? (a )?quote\b|quote needed|get specs/i.test(r.notes)},
   {key:'arrived',label:'Parts Arrived \u2014 Schedule',test:r=>r.status==='Parts Arrived - Schedule Now'},
   {key:'return',label:'Return Not Booked',test:r=>RETURN_RX.test(r.notes)&&!(r.date&&!isOverdue(r.date))},
   {key:'nopo',label:'Awaiting Parts, None Tracked',test:r=>(r.status==='Waiting on Parts'||r.status==='Approved - Awaiting Parts')&&!data.parts.some(p=>p.wo_num&&p.wo_num===r.wo_num)},
@@ -579,6 +604,20 @@ function setActionFilter(k){
 }
 
 // ── Job record modal (one job, one record) ───────────────
+function jobStatusOptions(j){
+  const quoted=['Scheduled','In Progress','Approved - Awaiting Parts','Parts Arrived - Schedule Now','On Hold','Quoted'];
+  const wo=['In Progress','Waiting on Parts','Parts Arrived - Schedule Now','Waiting on Customer','Needs Follow-up','Needs Quote'];
+  const sched=['Approved - Awaiting Parts','Parts Arrived - Schedule Now','Scheduled','On Hold'];
+  const tabs=j.tabs||[];
+  let opts=[];
+  if(tabs.includes('quoted'))opts=opts.concat(quoted);
+  if(tabs.includes('wo'))opts=opts.concat(wo);
+  if(tabs.includes('scheduled'))opts=opts.concat(sched);
+  if(!opts.length)opts=quoted.concat(wo);
+  opts=[...new Set(opts)];
+  if(j.status&&!opts.includes(j.status))opts.unshift(j.status);
+  return opts;
+}
 function openJob(wo){
   ensureV2Index();
   const j=data.jobs[wo];if(!j){alert('No job record for W/O #'+wo);return;}
@@ -589,14 +628,29 @@ function openJob(wo){
   const woRow=data.wo.find(w=>w.wo_num===wo);
   const log=(woRow&&woRow.log||[]).concat(j.log||[]).slice(0,8).map(e=>`<div class="job-line"><span class="job-sub">${escH(e.ts)}</span> ${escH(e.msg)}</div>`).join('')||'<div class="job-sub">No activity yet</div>';
   const m=j.money||{};
+  const statusOpts=jobStatusOptions(j).map(st=>`<option value="${escH(st)}"${st===j.status?' selected':''}>${escH(st)}</option>`).join('');
+  const schedDate=j.due||(j.quote&&j.quote.date)||'';
   document.getElementById('job-modal-content').innerHTML=`
     <h3>W/O #${escH(j.wo_num)} \u2014 ${escH(j.customer||'')}</h3>
-    <div class="job-head">${typeBadge(j.type)} ${badge(j.status||'Open')} <span class="job-sub">Tech: ${escH((j.techs||[]).join(', ')||'Unassigned')} \u00b7 Created ${fmtDate(j.created)} \u00b7 Due ${fmtDate(j.due)}${j.archived!==undefined?' \u00b7 Archived '+fmtDate(j.archived):''}</span></div>
+    <div class="job-head">${typeBadge(j.type)} <span class="job-sub">Tech: ${escH((j.techs||[]).join(', ')||'Unassigned')} \u00b7 Created ${fmtDate(j.created)}${j.archived!==undefined?' \u00b7 Archived '+fmtDate(j.archived):''}</span></div>
     <div class="job-sub" style="margin:6px 0 10px">On: ${tabLinks||'\u2014'}</div>
-    <div class="job-sec">Notes</div><div class="job-notes">${escH(j.notes||'\u2014')}</div>
+    <div class="job-sec">Job</div>
+    <div class="form-grid">
+      <div class="form-row"><label>Status</label><select id="j-status">${statusOpts}</select></div>
+      <div class="form-row"><label>Scheduled / due date</label><input type="date" id="j-schedDate" value="${escH(schedDate)}"></div>
+      <div class="form-row"><label>Tech(s)</label><input id="j-techs" value="${escH((j.techs||[]).join(', '))}" placeholder="Dan, Chase"></div>
+      <div class="form-row"><label>Type</label><select id="j-type">${['Service','PM','Install','Quoted'].map(t=>`<option${(j.type||'')===t?' selected':''}>${t}</option>`).join('')}</select></div>
+    </div>
+    <div class="form-row"><label>Notes</label><textarea id="j-notes">${escH(j.notes||'')}</textarea></div>
     <div class="job-sec">Money</div>
     <div class="job-sub">Hrs quoted: <b>${m.hrs_quoted??'\u2014'}</b> \u00b7 Cost quoted: <b>${fmtCurrency(m.cost_quoted)}</b> \u00b7 ${m.approved?'<span class="badge badge-approved">Approved</span>':'<span class="badge badge-waiting">Not approved</span>'}</div>
     <div class="job-sec">Parts (${(j.parts||[]).length})</div>${parts}
+    <div class="form-grid" style="margin-top:8px">
+      <div class="form-row"><label>Add part</label><input id="j-newPart" placeholder="e.g. flue adapter"></div>
+      <div class="form-row"><label>Supplier</label><input id="j-newSupplier" placeholder="e.g. Johnstone"></div>
+      <div class="form-row"><label>Ordered</label><input type="date" id="j-newOrdered"></div>
+      <div class="form-row"><label>ETA</label><input type="date" id="j-newEta"></div>
+    </div>
     ${j.pm?`<div class="job-sec">PM progress</div>
     <div class="form-grid">
       <div class="form-row"><label>Due month</label><input id="j-dueMonth" value="${escH(pm.dueMonth||'')}" placeholder="YYYY-MM"></div>
@@ -623,16 +677,82 @@ function saveJob(wo){
   const j=data.jobs[wo];if(!j)return;
   const v=id=>{const el=document.getElementById(id);return el?el.value.trim():undefined;};
   const list=id=>(v(id)||'').split(',').map(x=>x.trim()).filter(Boolean);
+  const prevStatus=j.status||'';
+  const newStatus=v('j-status')||prevStatus;
+  const newDate=v('j-schedDate')||'';
+  const newNotes=v('j-notes')!==undefined?v('j-notes'):(j.notes||'');
+  const newTechs=list('j-techs');
+  const newType=v('j-type')||j.type||'';
+  const changes=[];
+  if(newStatus!==prevStatus)changes.push(`Status: ${prevStatus||'\u2014'} \u2192 ${newStatus}`);
+  if(newDate!==(j.due||''))changes.push(`Date: ${j.due||'\u2014'} \u2192 ${newDate||'\u2014'}`);
+  if(newNotes!==(j.notes||''))changes.push('Notes updated');
+  if((newTechs.join(', '))!==(j.techs||[]).join(', '))changes.push('Tech updated');
+
+  j.status=newStatus;j.due=newDate;j.notes=newNotes;j.type=newType;
+  if(newTechs.length)j.techs=newTechs;
+  if(j.quote){j.quote.status=newStatus;j.quote.date=newDate;}
+  if(j.money)j.money.approved=APPROVED_STATUSES.includes(newStatus);
+
+  // Push into live tab rows (Quoted / WO / Scheduled)
+  const qIdx=(data.quoted||[]).findIndex(r=>r.wo_num===wo);
+  if(qIdx>=0){
+    const q=data.quoted[qIdx];
+    q.status=newStatus;q.date=newDate;q.notes=newNotes;q.type=newType;
+    if(newTechs.length)q.techs=newTechs;
+    syncQuotedToScheduled(q);
+    upsertJobFromRow('quoted',q);
+  }
+  const wIdx=(data.wo||[]).findIndex(r=>r.wo_num===wo&&!r.completed);
+  if(wIdx>=0){
+    const w=data.wo[wIdx];
+    const prev=w.status||'';
+    w.status=newStatus;w.due=newDate;w.notes=newNotes;w.type=newType;
+    if(newTechs.length)w.tech=newTechs.join(', ');
+    if(!w.log)w.log=[];
+    if(prev&&prev!==newStatus)w.log.unshift({ts:nowTs(),msg:`Status changed: ${prev} \u2192 ${newStatus}`});
+    upsertJobFromRow('wo',w);
+  }
+  // Standalone scheduled (not a quoted mirror)
+  (data.scheduled||[]).forEach(s=>{
+    if(s.wo_num===wo&&!s._quoted_ref){
+      s.status=newStatus;s.date=newDate;s.notes=newNotes;s.type=newType;
+      if(newTechs.length)s.tech=newTechs.join(', ');
+      upsertJobFromRow('scheduled',s);
+    }
+  });
+  // If quoted-only and now Scheduled/Awaiting Parts/Parts Arrived with a date, ensure sync
+  if(qIdx<0&&wIdx<0){
+    // no-op — archive or orphan
+  }else if(qIdx>=0){
+    syncQuotedToScheduled(data.quoted[qIdx]);
+  }
+
+  // Optional new parts line
+  const partName=v('j-newPart');
+  if(partName){
+    const part={wo_num:wo,tech:(newTechs[0]||(j.techs||[])[0]||''),part:partName,supplier:v('j-newSupplier')||'',ordered:v('j-newOrdered')||'',eta:v('j-newEta')||''};
+    data.parts.push(part);
+    changes.push('Part added: '+partName);
+  }
+
   if(j.pm){['dueMonth','nextVisit','hrsQuoted','hrsUsed','pctDone','materials'].forEach(f=>{const x=v('j-'+f);if(x!==undefined)j.pm[f]=x;});}
   if(j.customer){
     const key=slugify(j.customer);
-    const s=data.sites[key]||(data.sites[key]={name:j.customer,equipment:[],lastFindings:'',openRecs:[],preferredTech:'',accessNotes:''});
-    s.preferredTech=v('j-preferredTech')||'';s.accessNotes=v('j-accessNotes')||'';s.lastFindings=v('j-lastFindings')||'';
-    s.equipment=list('j-equipment');s.openRecs=list('j-openRecs');
+    const site=data.sites[key]||(data.sites[key]={name:j.customer,equipment:[],lastFindings:'',openRecs:[],preferredTech:'',accessNotes:''});
+    site.preferredTech=v('j-preferredTech')||'';site.accessNotes=v('j-accessNotes')||'';site.lastFindings=v('j-lastFindings')||'';
+    site.equipment=list('j-equipment');site.openRecs=list('j-openRecs');
   }
-  if(!j.log)j.log=[];j.log.unshift({ts:nowTs(),msg:'Job record updated (PM / site memory)'});
+  if(!j.log)j.log=[];
+  j.log.unshift({ts:nowTs(),msg:changes.length?changes.join('; '):'Job record updated'});
+  j.lastChanged=new Date().toISOString();
+  j.lastChangeNote=j.log[0].msg;
+  ensureV2Index();
+  if(typeof jobSig==='function'){try{j._sig=jobSig(j);}catch(e){}}
   scheduleSave();closeJob();
+  updateStats();updateTechFilters();
   const active=ALL_TABS.find(t=>document.getElementById('tab-'+t).classList.contains('active'));if(active)switchTab(active);
+  else renderBoard();
 }
 
 // ── Scoreboard (collapsible + filterable) ─────────────────
@@ -772,19 +892,45 @@ function siteMemoryHTML(name){
   </div>`;
 }
 
-function handleCredential(r){const p=JSON.parse(atob(r.credential.split('.')[1]));document.getElementById('user-info').textContent=p.email;initOAuth();}
-function initOAuth(){
-  const c=google.accounts.oauth2.initTokenClient({client_id:CLIENT_ID,scope:SCOPES,callback:(t)=>{
-    if(t.error){setSync('error','Auth failed');return;}
-    accessToken=t.access_token;
-    document.getElementById('auth-screen').style.display='none';
-    document.getElementById('app').style.display='block';
-    document.getElementById('date-display').textContent=new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
-    loadFromDrive();
-  }});
+function showAuthError(msg){
+  const e=document.getElementById('auth-error');
+  if(!e)return;
+  e.style.display=msg?'block':'none';
+  e.textContent=msg||'';
+}
+function onAuthSuccess(token){
+  accessToken=token;
+  document.getElementById('auth-screen').style.display='none';
+  document.getElementById('app').style.display='block';
+  document.getElementById('date-display').textContent=new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
+  fetch('https://www.googleapis.com/oauth2/v3/userinfo',{headers:{Authorization:'Bearer '+accessToken}})
+    .then(r=>r.json()).then(u=>{if(u.email)document.getElementById('user-info').textContent=u.email;})
+    .catch(()=>{});
+  loadFromDrive();
+}
+function startGoogleSignIn(){
+  showAuthError('');
+  if(!(window.google&&google.accounts&&google.accounts.oauth2)){
+    showAuthError('Google sign-in still loading — wait a second and tap again.');
+    return;
+  }
+  const c=google.accounts.oauth2.initTokenClient({
+    client_id:CLIENT_ID,
+    scope:SCOPES,
+    callback:(t)=>{
+      if(t.error){showAuthError('Auth failed: '+(t.error_description||t.error));return;}
+      if(!t.access_token){showAuthError('No access token — try again in Safari or Chrome.');return;}
+      onAuthSuccess(t.access_token);
+    },
+    error_callback:(err)=>{
+      const m=(err&&(err.message||err.type))||'popup blocked or closed';
+      showAuthError('Sign-in did not finish ('+m+'). Tap again, or open this page in Safari/Chrome (not Instagram/Teams).');
+    }
+  });
+  // Must stay in the tap gesture — calling this from a GIS credential callback gets blocked on phones.
   c.requestAccessToken();
 }
-function signOut(){google.accounts.id.disableAutoSelect();accessToken=null;driveFileId=null;document.getElementById('auth-screen').style.display='flex';document.getElementById('app').style.display='none';}
+function signOut(){accessToken=null;driveFileId=null;document.getElementById('auth-screen').style.display='flex';document.getElementById('app').style.display='none';showAuthError('');}
 function setSync(s,m){const e=document.getElementById('sync-status');e.className='sync-status '+s;e.textContent=m;}
 
 async function loadFromDrive(){
@@ -801,7 +947,7 @@ async function loadFromDrive(){
     }else{setSync('saved','New file \u2014 ready');}
   }catch(e){setSync('error','Load failed');}
   autoPromoteScheduled();
-  ensureV2Index();renderSyncStamp();
+  ensureV2Index();if(ensureStamps())scheduleSave();renderSyncStamp();renderSince();
   updateStats();updateTechFilters();renderBoard();
 }
 
@@ -838,7 +984,7 @@ function archiveNotDupe(wo_num){
   return!data.archive.some(a=>a.item&&a.item.wo_num===wo_num);
 }
 
-const SYNC_STATUSES=['Scheduled','Approved - Awaiting Parts'];
+const SYNC_STATUSES=['Scheduled','Approved - Awaiting Parts','Parts Arrived - Schedule Now'];
 function syncQuotedToScheduled(quotedItem){
   if(!quotedItem.wo_num)return;
   const shouldSync=quotedItem.date&&SYNC_STATUSES.includes(quotedItem.status);
@@ -948,31 +1094,21 @@ function globalSearch(){
   const q=(document.getElementById('global-search').value||'').toLowerCase().trim();
   const el=document.getElementById('global-results');
   if(q.length<2){el.classList.remove('show');return;}
+  const terms=q.split(/\s+/);const hit=s=>{s=s.toLowerCase();return terms.every(t=>s.includes(t));};
   const results=[];
-  const seenWO=new Set();
-  data.wo.forEach(r=>{
-    if((r.wo_num+r.tech+(r.customer||'')+(r.notes||'')+r.type).toLowerCase().includes(q)){
-      if(r.wo_num)seenWO.add(r.wo_num);
-      results.push({label:`W/O #${r.wo_num} \u2014 ${r.customer||r.tech}`,sub:`${r.type} \u00b7 ${r.status}`,tab:'wo',src:'WO'});
-    }
+  Object.values(data.jobs||{}).forEach(j=>{
+    const hay=[j.wo_num,j.customer,(j.techs||[]).join(' '),j.type,j.status,j.notes,j.lastChangeNote].join(' ');
+    if(!hit(hay))return;
+    const r={wo_num:j.wo_num,type:j.type,status:j.status,notes:j.notes||'',src:(j.tabs||[]).includes('quoted')?'Quoted':'WO'};
+    const tags=j.archived!==undefined?'<span class="tg tg-stale">Archived</span>':tagsHTML(r);
+    results.push({rank:j.archived!==undefined?2:(String(j.wo_num).toLowerCase()===q?0:1),html:`<div class="global-result-item" onmousedown="openJob('${jsq(j.wo_num)}');hideGlobalResults()"><span class="global-result-type">${(j.tabs||[])[0]||'job'}</span><span class="global-result-main">${kindBadge(r)}W/O #${escH(j.wo_num)} \u2014 ${escH(j.customer||'')}${tags}</span><div class="global-result-sub">${escH(j.status||'')}${j.lastChanged?' \u00b7 changed '+fmtStamp(j.lastChanged):''}</div></div>`});
   });
-  data.quoted.forEach(r=>{
-    if((r.wo_num+(r.customer||'')+(r.techs||[]).join(' ')).toLowerCase().includes(q)){
-      if(r.wo_num)seenWO.add(r.wo_num);
-      results.push({label:`W/O #${r.wo_num} \u2014 ${r.customer||''}`,sub:`Quoted \u00b7 ${r.status}`,tab:'quoted',src:'Quoted'});
-    }
-  });
-  data.scheduled.forEach(r=>{
-    if((r.wo_num+r.tech+(r.customer||'')).toLowerCase().includes(q)){
-      if(r.wo_num&&seenWO.has(r.wo_num))return;
-      results.push({label:`W/O #${r.wo_num} \u2014 ${r.customer||''}`,sub:`Scheduled \u00b7 ${fmtDate(r.date)}`,tab:'scheduled',src:'Sched'});
-    }
-  });
-  data.parts.forEach(r=>{if((r.wo_num+r.tech+(r.part||'')).toLowerCase().includes(q))results.push({label:`${r.part} \u2014 W/O #${r.wo_num}`,sub:`Parts \u00b7 ETA ${fmtDate(r.eta)}`,tab:'parts',src:'Parts'});});
-  data.callbacks.forEach(r=>{if((r.customer+r.tech+(r.reason||'')).toLowerCase().includes(q))results.push({label:`Callback: ${r.customer}`,sub:`Tech: ${r.tech}`,tab:'callbacks',src:'CB'});});
-  data.tasks.forEach(r=>{if((r.task+(r.notes||'')).toLowerCase().includes(q))results.push({label:r.task,sub:`Task \u00b7 ${r.category||''}`,tab:'tasks',src:'Task'});});
+  data.parts.forEach(r=>{if(hit(r.wo_num+' '+r.tech+' '+(r.part||'')))results.push({rank:1,html:`<div class="global-result-item" onmousedown="switchTab('parts');hideGlobalResults()"><span class="global-result-type">Parts</span><span class="global-result-main">${escH(r.part)} \u2014 W/O #${escH(r.wo_num)}</span><div class="global-result-sub">ETA ${fmtDate(r.eta)}</div></div>`});});
+  data.callbacks.forEach(r=>{if(hit(r.customer+' '+r.tech+' '+(r.reason||'')))results.push({rank:1,html:`<div class="global-result-item" onmousedown="switchTab('callbacks');hideGlobalResults()"><span class="global-result-type">CB</span><span class="global-result-main">Callback: ${escH(r.customer)}</span></div>`});});
+  data.tasks.forEach(r=>{if(hit(r.task+' '+(r.notes||'')))results.push({rank:1,html:`<div class="global-result-item" onmousedown="switchTab('tasks');hideGlobalResults()"><span class="global-result-type">Task</span><span class="global-result-main">${escH(r.task)}</span></div>`});});
   if(!results.length){el.innerHTML=`<div class="global-result-item" style="color:#aaa">No results found</div>`;el.classList.add('show');return;}
-  el.innerHTML=results.slice(0,10).map(r=>`<div class="global-result-item" onclick="switchTab('${r.tab}');hideGlobalResults()"><span class="global-result-type">${r.src}</span><span class="global-result-main">${r.label}</span><div class="global-result-sub">${r.sub}</div></div>`).join('');
+  results.sort((a,b)=>a.rank-b.rank);
+  el.innerHTML=results.slice(0,15).map(r=>r.html).join('')+(results.length>15?`<div class="global-result-item" style="color:#888">+${results.length-15} more \u2014 add another word</div>`:'');
   el.classList.add('show');
 }
 function hideGlobalResults(){document.getElementById('global-results').classList.remove('show');}
@@ -982,34 +1118,37 @@ function renderBoard(){
   const tech=document.getElementById('board-tech-filter').value;
   const typeF=document.getElementById('board-type-filter').value;
   const rows=[];
-  data.wo.filter(r=>!r.completed).forEach(r=>{
+  SRC_NOW='WO';data.wo.filter(r=>!r.completed).forEach(r=>{
     const techMatch=techMatchFn(r.tech,tech);
-    const typeMatch=!typeF||r.type===typeF;
+    const typeMatch=!typeF||jobKind({type:r.type,status:r.status,notes:r.notes,src:SRC_NOW})===typeF;
     const textMatch=!q||(r.wo_num+r.tech+(r.customer||'')+(r.notes||'')+r.type).toLowerCase().includes(q);
     if(techMatch&&typeMatch&&textMatch)rows.push({wo_num:r.wo_num,tech:r.tech,customer:r.customer||'\u2014',type:r.type,status:r.status,date:r.due,created:r.created,notes:r.notes||'',src:'WO'});
   });
-  data.quoted.forEach(r=>{
+  SRC_NOW='Quoted';data.quoted.forEach(r=>{
     const techStr=(r.techs||[]).filter(Boolean).join(', ');
     const techMatch=techMatchFn(r.techs,tech);
-    const typeMatch=!typeF||r.type===typeF;
+    const typeMatch=!typeF||jobKind({type:r.type,status:r.status,notes:r.notes,src:SRC_NOW})===typeF;
     const textMatch=!q||(r.wo_num+techStr+(r.customer||'')+r.type+(r.notes||'')).toLowerCase().includes(q);
     if(techMatch&&typeMatch&&textMatch)rows.push({wo_num:r.wo_num,tech:techStr||'\u2014',customer:r.customer||'\u2014',type:r.type,status:r.status,date:r.date,created:null,notes:r.notes||'',src:'Quoted'});
   });
-  data.scheduled.filter(r=>!r._quoted_ref).forEach(r=>{
+  SRC_NOW='Sched';data.scheduled.filter(r=>!r._quoted_ref).forEach(r=>{
     const techMatch=techMatchFn(r.tech,tech);
-    const typeMatch=!typeF||r.type===typeF;
+    const typeMatch=!typeF||jobKind({type:r.type,status:r.status,notes:r.notes,src:SRC_NOW})===typeF;
     const textMatch=!q||(r.wo_num+r.tech+(r.customer||'')+r.type+(r.notes||'')).toLowerCase().includes(q);
     if(techMatch&&typeMatch&&textMatch)rows.push({wo_num:r.wo_num,tech:r.tech,customer:r.customer||'\u2014',type:r.type,status:r.status,date:r.date,created:null,notes:r.notes||'',src:'Sched'});
   });
   const bucket=actionFilter&&ACTION_BUCKETS.find(b=>b.key===actionFilter);
-  const shown=bucket?rows.filter(bucket.test):rows;
+  const tagF=(document.getElementById('board-tag-filter')||{}).value;
+  let shown=bucket?rows.filter(bucket.test):rows;
+  if(tagF)shown=shown.filter(r=>jobTags(r).includes(tagF));
+  shown.sort((a,b)=>tagRank(a)-tagRank(b));
   const note=document.getElementById('board-filter-note');
   if(note)note.innerHTML=bucket?`Action Queue filter: <b>${bucket.label}</b> \u2014 ${shown.length} job${shown.length!==1?'s':''} \u00b7 <span class="job-link" onclick="setActionFilter(null)">clear</span>`:'';
   const tbody=document.getElementById('board-body');
   if(!shown.length){tbody.innerHTML=`<tr><td colspan="9" class="empty">${bucket?'Nothing in this bucket':'No open jobs'}</td></tr>`;return;}
-  tbody.innerHTML=shown.map(r=>`<tr>
+  tbody.innerHTML=shown.map(r=>`<tr class="${rowCls(r)}">
     <td style="font-weight:500">${woLink(r.wo_num)}</td><td>${r.tech||'\u2014'}</td>
-    <td>${r.customer}</td><td>${typeBadge(r.type)}</td><td>${badge(r.status)}</td>
+    <td>${r.customer}</td><td>${kindBadge(r)}</td><td>${badge(r.status)}${tagsHTML(r)}</td>
     <td class="${isOverdue(r.date)?'overdue':''}">${fmtDate(r.date)}</td>
     <td>${r.created?ageBadge(r.created):'\u2014'}</td>
     <td class="notes-cell" onclick="toggleNotes(this)">${r.notes||'\u2014'}</td>
@@ -1026,13 +1165,13 @@ function renderWO(){
   if(!rows.length){renderEmpty('wo-body',9);return;}
   tbody.innerHTML=rows.map(r=>{
     const i=data.wo.indexOf(r);
-    const rowCls=r.completed?'completed-row':'';
+    const rowCls=r.completed?'completed-row':rowCls2({...r,date:r.due,src:'WO'});
     const pmHrs=(r.type==='PM'&&r.pm_hrs)?`<span style="font-size:11px;color:#888;margin-left:4px">${r.pm_hrs}h</span>`:'';
     const logCount=(r.log&&r.log.length)?`<span style="font-size:10px;color:#6b21a8;margin-left:3px">(${r.log.length})</span>`:'';
     return`<tr class="${rowCls}">
       <td style="font-weight:500">${woLink(r.wo_num)}</td><td>${r.tech||'\u2014'}</td>
       <td>${r.customer||'\u2014'}</td>
-      <td>${r.type||'\u2014'}${pmHrs}</td><td>${badge(r.status)}</td>
+      <td>${kindBadge({...r,src:'WO'})}${pmHrs}</td><td>${badge(r.status)}${tagsHTML({...r,src:'WO'})}</td>
       <td class="${isOverdue(r.due)&&!r.completed?'overdue':''}">${fmtDate(r.due)}</td>
       <td>${ageBadge(r.created)}</td>
       <td class="notes-cell" onclick="toggleNotes(this)">${r.notes||'\u2014'}</td>
@@ -1062,9 +1201,9 @@ function renderQuoted(){
     return`<tr${isSynced?' class="synced-row"':''}>
       <td style="font-weight:500">${woLink(r.wo_num)}</td>
       <td title="${techDisplay}">${techDisplay.length>15?techDisplay.slice(0,15)+'\u2026':techDisplay}</td>
-      <td>${r.customer||'\u2014'}</td><td>${r.type||'\u2014'}</td>
+      <td>${r.customer||'\u2014'}</td><td>${kindBadge({...r,src:'Quoted'})}</td>
       <td>${r.hrs_quoted||'\u2014'}</td><td>${fmtCurrency(r.cost_quoted)}</td>
-      <td>${badge(r.status)}${isSynced?'<span style="font-size:10px;color:#6b21a8;margin-left:4px">&#8599; Sched</span>':''}</td>
+      <td>${badge(r.status)}${tagsHTML({...r,src:'Quoted'})}${isSynced?'<span style="font-size:10px;color:#6b21a8;margin-left:4px">&#8599; Sched</span>':''}</td>
       <td class="${isOverdue(r.date)?'overdue':''}">${fmtDate(r.date)}</td>
       <td class="notes-cell" onclick="toggleNotes(this)">${r.notes||'\u2014'}</td>
       <td><div class="action-btns"><button class="btn-edit" onclick="openModal('quoted',${i})">Edit</button><button class="btn-done" onclick="completeQuoted(${i})">Done</button><button class="btn-del" onclick="delItem('quoted',${i})">\u2715</button></div></td>
@@ -1928,6 +2067,81 @@ document.getElementById('completion-modal-bg').addEventListener('click',function
 document.getElementById('log-modal-bg').addEventListener('click',function(e){if(e.target===this)closeLogModal();});
 document.getElementById('pdf-modal-bg').addEventListener('click',function(e){if(e.target===this)closePDFModal();});
 document.getElementById('job-modal-bg').addEventListener('click',function(e){if(e.target===this)closeJob();});
+</script>
+
+<script>
+// ── ops2 UX pass: stamps, tags, kinds, since-last-sync ─────────────
+let SRC_NOW='WO';
+const DAY_MS=864e5;
+function jobKind(r){
+  const t=(r.type||''),s=(r.status||'');
+  if(r.src==='Quoted'||t==='Quoted')return'Quoted';
+  if(t==='PM')return'PM';
+  if(t==='Install')return'Install';
+  return'T&M';
+}
+function kindBadge(r){const k=jobKind(r);const c={Quoted:'kb-q','T&M':'kb-tm',PM:'kb-pm',Install:'kb-in'}[k];return`<span class="kb ${c}" title="${k==='T&M'?'Service W/O, not on Quoted tab \u2192 T&M':k}">${k==='T&M'?'T&amp;M':k.toUpperCase()}</span>`;}
+const WAIT_STATUS=['Quoted','On Hold','Waiting on Parts','Approved - Awaiting Parts','Waiting on Customer','Scheduled','Parts Arrived - Schedule Now'];
+const WAIT_RX=/awaiting parts|waiting on parts|on hold|parts (on order|ordered)|eta /i;
+function lastSyncISO(){return(data.meta||{}).lastSynced||'';}
+function jobTags(r){
+  const j=(data.jobs||{})[r.wo_num]||{};const tags=[];const now=Date.now();
+  const ls=Date.parse(lastSyncISO())||0;
+  const fs=Date.parse(j.firstSeen||'')||0, lc=Date.parse(j.lastChanged||'')||0;
+  if(fs&&(now-fs<DAY_MS||(ls&&fs>=ls-18*36e5)))tags.push('new');
+  else if(lc&&ls&&lc>=ls-6*36e5&&lc>fs+60e3)tags.push('upd');
+  const k=jobKind(r);const s=r.status||'';
+  const waiting=k==='Quoted'&&s!=='Needs Follow-up'||WAIT_STATUS.includes(s)||WAIT_RX.test(r.notes||'');
+  if(waiting)tags.push('wait');
+  else if((k==='T&M'||s==='Needs Follow-up'||s==='Needs Quote'||k==='PM')&&(lc||fs)&&now-(lc||fs)>14*DAY_MS)tags.push('stale');
+  if(s==='Needs Quote'||/no rec\b|no recs? entered|not in recs|recs? (still )?(missing|not entered)/i.test(r.notes||''))tags.push('norec');
+  return tags;
+}
+const TAGTXT={new:['tg-new','New'],upd:['tg-upd','Updated'],wait:['tg-wait','Waiting'],stale:['tg-stale','Stale'],norec:['tg-norec','No Rec']};
+function tagsHTML(r){const j=(data.jobs||{})[r.wo_num]||{};return jobTags(r).map(t=>`<span class="tg ${TAGTXT[t][0]}" title="${t==='upd'||t==='new'?escH(j.lastChangeNote||''):t==='norec'?'Recommendation not entered \u2014 sales cannot see it':''}">${TAGTXT[t][1]}</span>`).join('');}
+function tagRank(r){const t=jobTags(r);return t.includes('new')?0:t.includes('upd')?1:t.includes('stale')?3:t.includes('wait')?4:2;}
+function rowCls(r){const t=jobTags(r);return t.includes('new')?'row-new':t.includes('upd')?'row-upd':t.includes('stale')?'row-stale':'';}
+function rowCls2(r){return rowCls(r);}
+// Stamps: persist firstSeen / lastChanged / lastChangeNote / _sig on data.jobs (additive; ops1 ignores them)
+function jobSig(j){return[j.status||'',j.due||'',(j.techs||[]).join(','),(j.notes||'').length,j.archived||''].join('|');}
+function logTs(l){const t=Date.parse(l&&l.ts||'');return isNaN(t)?0:t;}
+function ensureStamps(){
+  let changed=false;const nowIso=lastSyncISO()||new Date().toISOString();
+  Object.values(data.jobs||{}).forEach(j=>{
+    const logs=(j.log||[]).filter(l=>logTs(l));const lastLog=logs.length?logs.reduce((a,b)=>logTs(b)>=logTs(a)?b:a):null;
+    if(!j.firstSeen){const c=(j.created?Date.parse(j.created+(j.created.length===10?'T12:00:00':'')):0)||(logs.length?Math.min(...logs.map(logTs)):0);j.firstSeen=c?new Date(c).toISOString():new Date((Date.parse(nowIso)||Date.now())-7*DAY_MS).toISOString();j.firstSeenEstimated=!c||undefined;changed=true;}
+    if(!j.lastChanged){j.lastChanged=lastLog?new Date(logTs(lastLog)).toISOString():j.firstSeen;j.lastChangeNote=lastLog?lastLog.msg:'First seen';changed=true;}
+    const sig=jobSig(j);
+    if(j._sig===undefined){j._sig=sig;changed=true;}
+    else if(j._sig!==sig){j._sig=sig;j.lastChanged=new Date().toISOString();j.lastChangeNote=lastLog&&logTs(lastLog)>Date.now()-DAY_MS?lastLog.msg:(j.archived?'Archived':'Edited: status/notes/due changed');changed=true;}
+  });
+  return changed;
+}
+function sinceLists(){
+  const ls=Date.parse(lastSyncISO())||0;const win=ls?ls-18*36e5:Date.now()-DAY_MS;
+  const diff=(data.meta||{}).lastSyncDiff;
+  const jobs=Object.values(data.jobs||{});
+  if(diff&&diff.at===lastSyncISO())return{added:diff.added||[],updated:diff.updated||[],closed:diff.closed||[]};
+  return{
+    added:jobs.filter(j=>Date.parse(j.firstSeen||'')>=win&&j.archived===undefined).map(j=>j.wo_num),
+    updated:jobs.filter(j=>Date.parse(j.lastChanged||'')>=win&&!(Date.parse(j.firstSeen||'')>=win)&&j.archived===undefined).map(j=>j.wo_num),
+    closed:jobs.filter(j=>j.archived!==undefined&&ls&&j.archived>=new Date(win).toISOString().slice(0,10)).map(j=>j.wo_num)
+  };
+}
+let sinceOpen=true;
+function renderSince(){
+  const el=document.getElementById('since-strip');if(!el)return;
+  const L=sinceLists();const ls=lastSyncISO();
+  const it=w=>{const j=data.jobs[w]||{};return`<span class="since-it" onclick="openJob('${jsq(w)}')" title="${escH(j.lastChangeNote||'')}"><b>${escH(w)}</b> <small>${escH((j.customer||'').slice(0,28))}</small></span>`;};
+  const grp=(lbl,a)=>a.length?`<div class="since-grp"><span class="since-lbl">${lbl} ${a.length}</span>${a.map(it).join('')}</div>`:'';
+  const total=L.added.length+L.updated.length+L.closed.length;
+  el.innerHTML=`<h3>Since last sync <span>${ls?fmtStamp(ls):'\u2014'} \u00b7 ${L.added.length} added \u00b7 ${L.updated.length} updated \u00b7 ${L.closed.length} closed</span><span class="since-toggle" onclick="sinceOpen=!sinceOpen;renderSince()">${sinceOpen?'hide':'show'}</span></h3>`+(sinceOpen?(total?grp('Added',L.added)+grp('Updated',L.updated)+grp('Closed',L.closed):'<div style="color:#888">No changes in the last sync.</div>'):'');
+}
+document.addEventListener('keydown',e=>{
+  const tag=(e.target.tagName||'').toLowerCase();const typing=tag==='input'||tag==='textarea'||tag==='select';
+  if(((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k')||(e.key==='/'&&!typing)){e.preventDefault();const g=document.getElementById('global-search');g.focus();g.select();}
+  if(e.key==='Escape'&&e.target.id==='global-search'){hideGlobalResults();e.target.blur();}
+});
 </script>
 </body>
 </html>
