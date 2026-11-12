@@ -258,6 +258,8 @@ tr.row-new td:first-child{box-shadow:inset 3px 0 0 #111}tr.row-upd td:first-chil
 .since-toggle{font-size:11px;color:#555;cursor:pointer;text-decoration:underline;margin-left:auto}
 .kbd-hint{position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:11px;color:#999;border:1px solid #ddd;border-radius:4px;padding:0 5px;background:#fafafa}
 .legend{font-size:11px;color:#666;margin:-6px 0 12px}
+.po-missing{font-size:11px;color:#999;background:#f3f3f3;border-radius:10px;padding:1px 8px;white-space:nowrap}
+.po-num{font-weight:500}
 </style>
 </head>
 <body>
@@ -367,12 +369,12 @@ tr.row-new td:first-child{box-shadow:inset 3px 0 0 #111}tr.row-upd td:first-chil
 
   <div id="tab-parts" class="section">
     <div class="toolbar">
-      <input type="text" placeholder="Search part, tech, W/O..." id="parts-search" oninput="renderParts()">
+      <input type="text" placeholder="Search part, tech, W/O, PO..." id="parts-search" oninput="renderParts()">
       <select id="parts-tech-filter" onchange="renderParts()"><option value="">All techs</option></select>
       <button class="btn-add" onclick="openModal('parts',null)">+ Add Part</button>
     </div>
     <table><thead><tr>
-      <th style="width:90px">W/O #</th><th style="width:100px">Tech</th><th>Part</th>
+      <th style="width:90px">W/O #</th><th style="width:100px">PO #</th><th style="width:100px">Tech</th><th>Part</th>
       <th style="width:100px">Supplier</th><th style="width:90px">Ordered</th><th style="width:90px">ETA</th><th style="width:110px"></th>
     </tr></thead><tbody id="parts-body"></tbody></table>
   </div>
@@ -537,7 +539,7 @@ function ensureV2Index(){
   (data.quoted||[]).forEach(r=>upsertJobFromRow('quoted',r));
   (data.scheduled||[]).forEach(r=>upsertJobFromRow('scheduled',r));
   (data.wo||[]).forEach(r=>upsertJobFromRow('wo',r));
-  (data.parts||[]).forEach(p=>{const j=data.jobs[(p.wo_num||'').trim()];if(j)j.parts.push({part:p.part||'',supplier:p.supplier||'',ordered:p.ordered||'',eta:p.eta||'',tech:p.tech||''});});
+  (data.parts||[]).forEach(p=>{const j=data.jobs[(p.wo_num||'').trim()];if(j)j.parts.push({part:p.part||'',supplier:p.supplier||'',ordered:p.ordered||'',eta:p.eta||'',tech:p.tech||'',po:p.po||resolvePartPo(p)});});
   const archived={};(data.archive||[]).forEach(a=>{if(a.item&&a.item.wo_num&&!archived[a.item.wo_num])archived[a.item.wo_num]=a.date||'';});
   Object.values(data.jobs).forEach(j=>{
     if(archived[j.wo_num]!==undefined){j.archived=archived[j.wo_num];if(!j.tabs.length)j.tabs.push('archive');}
@@ -560,6 +562,29 @@ const techMatchFn=techMatch;
 // ── v2 UI helpers ─────────────────────────────────────────
 function escH(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function jsq(s){return String(s==null?'':s).replace(/\\/g,'\\\\').replace(/'/g,"\\'");}
+const PO_RE=/\bPO\s*#?\s*([A-Z]{1,6}-?\d[\w.\-]*)/i;
+function extractPo(text){const m=String(text||'').match(PO_RE);return m?m[1].toUpperCase():'';}
+function stripPoFromPart(text){
+  let t=String(text||'');
+  t=t.replace(/\bPO\s*#?\s*[A-Z]{1,6}-?\d[\w.\-]*/ig,'');
+  t=t.replace(/\(\s*,\s*/g,'(').replace(/\s*,\s*\)/g,')');
+  t=t.replace(/\(\s+/g,'(').replace(/\s+\)/g,')');
+  t=t.replace(/\(\s*\)/g,'').replace(/\[\s*\]/g,'');
+  t=t.replace(/\s{2,}/g,' ').replace(/\s+,/g,',').replace(/,\s*,/g,',').trim();
+  return t.replace(/^[,;]\s*/,'').replace(/\s*[,;]$/,'');
+}
+function jobPoText(j){return j?[j.po,j.notes,j.lastChangeNote].filter(Boolean).join(' '):'';}
+function resolvePartPo(r){
+  const own=(r&&r.po||'').toString().trim();if(own)return own;
+  const fromPart=extractPo(r&&r.part);if(fromPart)return fromPart;
+  const j=(typeof data!=='undefined'&&data.jobs&&r&&r.wo_num)?data.jobs[String(r.wo_num).trim()]:null;
+  if(j&&j.po&&String(j.po).trim())return String(j.po).trim();
+  return extractPo(jobPoText(j))||'';
+}
+function partPoCell(r){const po=resolvePartPo(r);return po?`<span class="po-num">${escH(po)}</span>`:'<span class="po-missing">No PO</span>';}
+function partDisplayName(r){return stripPoFromPart(r&&r.part)||'\u2014';}
+function partSearchBlob(r){return [r.wo_num,r.tech,r.part,r.supplier,r.po,r.notes,resolvePartPo(r)].join(' ');}
+
 function woLink(wo){return wo?`<span class="job-link" onclick="event.stopPropagation();openJob('${jsq(wo)}')">${escH(wo)}</span>`:'\u2014';}
 function thisMonth(){return today().slice(0,7);}
 function fmtStamp(s){if(!s)return'';const d=new Date(s);if(isNaN(d))return s;return d.toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});}
@@ -624,7 +649,7 @@ function openJob(wo){
   const s=findSite(j.customer)||{};
   const pm=j.pm||{};
   const tabLinks=(j.tabs||[]).map(t=>`<span class="badge badge-open" style="cursor:pointer" onclick="closeJob();switchTab('${t}')">${t==='wo'?'Work Orders':t==='quoted'?'Quoted':t==='scheduled'?'Scheduled':'Archive'}</span>`).join(' ');
-  const parts=(j.parts||[]).map(p=>`<div class="job-line">${escH(p.part)}<span class="job-sub"> \u00b7 ${escH(p.supplier||'\u2014')} \u00b7 ordered ${fmtDate(p.ordered)} \u00b7 ETA ${fmtDate(p.eta)}</span></div>`).join('')||'<div class="job-sub">No parts tracked</div>';
+  const parts=(j.parts||[]).map(p=>`<div class="job-line">${escH(stripPoFromPart(p.part)||p.part)}<span class="job-sub"> \u00b7 PO ${escH(resolvePartPo(p)||'None')} \u00b7 ${escH(p.supplier||'\u2014')} \u00b7 ordered ${fmtDate(p.ordered)} \u00b7 ETA ${fmtDate(p.eta)}</span></div>`).join('')||'<div class="job-sub">No parts tracked</div>';
   const woRow=data.wo.find(w=>w.wo_num===wo);
   const log=(woRow&&woRow.log||[]).concat(j.log||[]).slice(0,8).map(e=>`<div class="job-line"><span class="job-sub">${escH(e.ts)}</span> ${escH(e.msg)}</div>`).join('')||'<div class="job-sub">No activity yet</div>';
   const m=j.money||{};
@@ -647,6 +672,7 @@ function openJob(wo){
     <div class="job-sec">Parts (${(j.parts||[]).length})</div>${parts}
     <div class="form-grid" style="margin-top:8px">
       <div class="form-row"><label>Add part</label><input id="j-newPart" placeholder="e.g. flue adapter"></div>
+      <div class="form-row"><label>PO #</label><input id="j-newPo" placeholder="e.g. AE2571"></div>
       <div class="form-row"><label>Supplier</label><input id="j-newSupplier" placeholder="e.g. Johnstone"></div>
       <div class="form-row"><label>Ordered</label><input type="date" id="j-newOrdered"></div>
       <div class="form-row"><label>ETA</label><input type="date" id="j-newEta"></div>
@@ -731,7 +757,7 @@ function saveJob(wo){
   // Optional new parts line
   const partName=v('j-newPart');
   if(partName){
-    const part={wo_num:wo,tech:(newTechs[0]||(j.techs||[])[0]||''),part:partName,supplier:v('j-newSupplier')||'',ordered:v('j-newOrdered')||'',eta:v('j-newEta')||''};
+    const part={wo_num:wo,tech:(newTechs[0]||(j.techs||[])[0]||''),part:partName,po:v('j-newPo')||'',supplier:v('j-newSupplier')||'',ordered:v('j-newOrdered')||'',eta:v('j-newEta')||''};
     data.parts.push(part);
     changes.push('Part added: '+partName);
   }
@@ -1103,7 +1129,7 @@ function globalSearch(){
     const tags=j.archived!==undefined?'<span class="tg tg-stale">Archived</span>':tagsHTML(r);
     results.push({rank:j.archived!==undefined?2:(String(j.wo_num).toLowerCase()===q?0:1),html:`<div class="global-result-item" onmousedown="openJob('${jsq(j.wo_num)}');hideGlobalResults()"><span class="global-result-type">${(j.tabs||[])[0]||'job'}</span><span class="global-result-main">${kindBadge(r)}W/O #${escH(j.wo_num)} \u2014 ${escH(j.customer||'')}${tags}</span><div class="global-result-sub">${escH(j.status||'')}${j.lastChanged?' \u00b7 changed '+fmtStamp(j.lastChanged):''}</div></div>`});
   });
-  data.parts.forEach(r=>{if(hit(r.wo_num+' '+r.tech+' '+(r.part||'')))results.push({rank:1,html:`<div class="global-result-item" onmousedown="switchTab('parts');hideGlobalResults()"><span class="global-result-type">Parts</span><span class="global-result-main">${escH(r.part)} \u2014 W/O #${escH(r.wo_num)}</span><div class="global-result-sub">ETA ${fmtDate(r.eta)}</div></div>`});});
+  data.parts.forEach(r=>{if(hit(partSearchBlob(r)))results.push({rank:1,html:`<div class="global-result-item" onmousedown="switchTab('parts');hideGlobalResults()"><span class="global-result-type">Parts</span><span class="global-result-main">${escH(partDisplayName(r))} \u2014 W/O #${escH(r.wo_num)}${resolvePartPo(r)?' \u00b7 PO '+escH(resolvePartPo(r)):''}</span><div class="global-result-sub">ETA ${fmtDate(r.eta)}</div></div>`});});
   data.callbacks.forEach(r=>{if(hit(r.customer+' '+r.tech+' '+(r.reason||'')))results.push({rank:1,html:`<div class="global-result-item" onmousedown="switchTab('callbacks');hideGlobalResults()"><span class="global-result-type">CB</span><span class="global-result-main">Callback: ${escH(r.customer)}</span></div>`});});
   data.tasks.forEach(r=>{if(hit(r.task+' '+(r.notes||'')))results.push({rank:1,html:`<div class="global-result-item" onmousedown="switchTab('tasks');hideGlobalResults()"><span class="global-result-type">Task</span><span class="global-result-main">${escH(r.task)}</span></div>`});});
   if(!results.length){el.innerHTML=`<div class="global-result-item" style="color:#aaa">No results found</div>`;el.classList.add('show');return;}
@@ -1213,13 +1239,13 @@ function renderQuoted(){
 function renderParts(){
   const q=(document.getElementById('parts-search').value||'').toLowerCase();
   const tech=document.getElementById('parts-tech-filter').value;
-  const rows=data.parts.filter(r=>(!q||(r.wo_num+r.tech+r.part+(r.supplier||'')).toLowerCase().includes(q))&&techMatchFn(r.tech,tech));
+  const rows=data.parts.filter(r=>(!q||partSearchBlob(r).toLowerCase().includes(q))&&techMatchFn(r.tech,tech));
   const tbody=document.getElementById('parts-body');
-  if(!rows.length){renderEmpty('parts-body',7);return;}
+  if(!rows.length){renderEmpty('parts-body',8);return;}
   tbody.innerHTML=rows.map(r=>{const i=data.parts.indexOf(r);
     const woMatch=r.wo_num&&data.wo.some(w=>w.wo_num===r.wo_num);
     const woCell=woMatch?`<span class="wo-link" onclick="jumpToWO('${r.wo_num}')">${r.wo_num}</span>`:r.wo_num||'\u2014';
-    return`<tr><td style="font-weight:500">${woCell}</td><td>${r.tech||'\u2014'}</td><td>${r.part||'\u2014'}</td>
+    return`<tr><td style="font-weight:500">${woCell}</td><td>${partPoCell(r)}</td><td>${r.tech||'\u2014'}</td><td>${escH(partDisplayName(r))}</td>
     <td>${r.supplier||'\u2014'}</td><td>${fmtDate(r.ordered)}</td><td class="${isOverdue(r.eta)?'overdue':''}">${fmtDate(r.eta)}</td>
     <td><div class="action-btns"><button class="btn-edit" onclick="openModal('parts',${i})">Edit</button><button class="btn-done" onclick="markDone('parts',${i})">In</button><button class="btn-del" onclick="delItem('parts',${i})">\u2715</button></div></td></tr>`;
   }).join('');
@@ -1389,7 +1415,7 @@ function getArchiveDetailHTML(r){
   // ── Parts type ──
   else if(r.type==='parts'){
     html+=`<div class="archive-detail-grid">
-      ${f('W/O #',it.wo_num)}${f('Tech',it.tech)}${f('Part',it.part)}
+      ${f('W/O #',it.wo_num)}${f('PO #',it.po||resolvePartPo(it))}${f('Tech',it.tech)}${f('Part',stripPoFromPart(it.part)||it.part)}
       ${f('Supplier',it.supplier)}${f('Ordered',fmtDate(it.ordered))}${f('ETA',fmtDate(it.eta))}
     </div>`;
   }
@@ -1565,6 +1591,7 @@ function getModalHTML(type,item){
   if(type==='parts')return`<h3>${item?'Edit':'Add'} Parts Order</h3>
     <div class="form-grid">
       <div class="form-row"><label>W/O Number</label><input id="f-wo_num" value="${v('wo_num')}" placeholder="e.g. 10432"></div>
+      <div class="form-row"><label>PO #</label><input id="f-po" value="${item?escH(resolvePartPo(item)):''}" placeholder="e.g. AE2571"></div>
       <div class="form-row"><label>Tech Name</label><input id="f-tech" value="${v('tech')}" placeholder="e.g. Mike"></div>
       <div class="form-row"><label>Part Name</label><input id="f-part" value="${v('part')}" placeholder="e.g. TXV R410A"></div>
       <div class="form-row"><label>Supplier</label><input id="f-supplier" value="${v('supplier')}" placeholder="e.g. Johnstone"></div>
@@ -1622,7 +1649,7 @@ function saveItem(type){
     else logActivity(item,`W/O updated`);
   }
   else if(type==='quoted'){item={wo_num:g('f-wo_num'),customer:g('f-customer'),type:g('f-type'),status:g('f-status'),hrs_quoted:g('f-hrs_quoted'),cost_quoted:g('f-cost_quoted'),date:g('f-date'),techs:getTechs_inputs(),notes:g('f-notes')};syncQuotedToScheduled(item);}
-  else if(type==='parts')item={wo_num:g('f-wo_num'),tech:g('f-tech'),part:g('f-part'),supplier:g('f-supplier'),ordered:g('f-ordered'),eta:g('f-eta')};
+  else if(type==='parts'){const existing=editingIndex!==null?data.parts[editingIndex]:{};item={...existing,wo_num:g('f-wo_num'),tech:g('f-tech'),part:g('f-part'),po:g('f-po'),supplier:g('f-supplier'),ordered:g('f-ordered'),eta:g('f-eta')};}
   else if(type==='scheduled')item={wo_num:g('f-wo_num'),tech:g('f-tech'),customer:g('f-customer'),type:g('f-type'),status:g('f-status'),date:g('f-date'),notes:g('f-notes')};
   else if(type==='callbacks')item={customer:g('f-customer'),tech:g('f-tech'),flagged:g('f-flagged'),deadline:g('f-deadline'),reason:g('f-reason')};
   else if(type==='tasks')item={task:g('f-task'),category:g('f-category'),due:g('f-due'),notes:g('f-notes')};
@@ -1805,7 +1832,7 @@ function openPDFModal(){
         <div class="form-row"><label>Date From (due / date / ETA / deadline)</label><input type="date" id="pf-date-from"></div>
         <div class="form-row"><label>Date To</label><input type="date" id="pf-date-to"></div>
       </div>
-      <div class="form-row" style="margin-bottom:0"><label>Search text (W/O #, customer, notes, part, tech)</label><input id="pf-text" placeholder="e.g. compressor, Bedford, 10432"></div>
+      <div class="form-row" style="margin-bottom:0"><label>Search text (W/O #, PO #, customer, notes, part, tech)</label><input id="pf-text" placeholder="e.g. compressor, Bedford, 10432, AE2571"></div>
       <p style="font-size:11px;color:#888;margin-top:8px">Rows missing a filtered field drop out (e.g. a Status filter drops Callbacks and Tasks). Rows with no date are kept by the date range.</p>
     </div>
     <div class="pdf-filter-section" style="border-color:#a8d5b5;background:#f0faf3">
@@ -1926,9 +1953,9 @@ function exportPDF(){
   }
   // ── Parts ── (customer/type/status come from the job record for that W/O)
   if(on('parts')){
-    const rows=data.parts.filter(r=>{const j=jobOf(r.wo_num);return pass({wo:r.wo_num,tech:r.tech||'',customer:r.customer||j.customer,type:j.type,status:j.status,date:r.eta,txt:txt(r.wo_num,r.customer||j.customer,r.tech,r.part,r.supplier,r.notes)});});
-    const w=W([20,36,24,50,26,0]);
-    section('Parts Pipeline',rows,null,rs=>{tH(['W/O #','Customer','Tech','Part','Supplier','ETA'],w);rs.forEach(r=>rowW([r.wo_num,r.customer||jobOf(r.wo_num).customer,r.tech,r.part,r.supplier,fmtDate(r.eta)],w));},'No matching parts');
+    const rows=data.parts.filter(r=>{const j=jobOf(r.wo_num);return pass({wo:r.wo_num,tech:r.tech||'',customer:r.customer||j.customer,type:j.type,status:j.status,date:r.eta,txt:txt(r.wo_num,r.customer||j.customer,r.tech,r.part,r.supplier,r.notes,r.po,resolvePartPo(r))});});
+    const w=W([18,20,30,20,44,24,0]);
+    section('Parts Pipeline',rows,null,rs=>{tH(['W/O #','PO #','Customer','Tech','Part','Supplier','ETA'],w);rs.forEach(r=>rowW([r.wo_num,resolvePartPo(r)||'No PO',r.customer||jobOf(r.wo_num).customer,r.tech,stripPoFromPart(r.part)||r.part,r.supplier,fmtDate(r.eta)],w));},'No matching parts');
   }
   // ── Scheduled ──
   if(on('scheduled')){
@@ -2036,7 +2063,7 @@ function exportPDF(){
       }
       const parts=(j&&j.parts)||[];
       head(`Parts (${parts.length})`);
-      if(parts.length){const w=W([70,40,26,0]);tH(['Part','Supplier','Ordered','ETA'],w);parts.forEach(p=>rowW([p.part,p.supplier,fmtDate(p.ordered),fmtDate(p.eta)],w));curHead=null;}
+      if(parts.length){const w=W([22,60,36,22,0]);tH(['PO #','Part','Supplier','Ordered','ETA'],w);parts.forEach(p=>rowW([resolvePartPo(p)||'No PO',stripPoFromPart(p.part)||p.part,p.supplier,fmtDate(p.ordered),fmtDate(p.eta)],w));curHead=null;}
       else emptyLine('No parts tracked');
       if(j&&j.pm){const pm=j.pm;head('PM progress');kv('Due month',pm.dueMonth);kv('Next visit',pm.nextVisit?fmtDate(pm.nextVisit):'');kv('Hrs quoted',pm.hrsQuoted);kv('Hrs used',pm.hrsUsed);kv('% tasks done',pm.pctDone!==''&&pm.pctDone!=null?pm.pctDone+'%':'');kv('Materials',pm.materials);}
       const s=findSite(cust);
